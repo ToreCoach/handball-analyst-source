@@ -1,0 +1,26 @@
+name: Costruisci e pubblica la versione Windows
+
+# Parte solo quando la avvii tu a mano, dalla scheda "Actions" su GitHub —
+# non ad ogni caricamento di codice, per non consumare risorse inutilmente
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v4
+
+      - name: Prepara Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Installa le dipendenze
+        run: npm install
+
+      - name: Costruisci e pubblica per Windows
+        run: npx electron-builder --win --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}

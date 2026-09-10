@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Handball Analyst</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="overlayLicenza" class="overlay-licenza">
+    <div class="licenza-box">
+      <img src="assets/logo-revos.png" alt="REVOS" class="licenza-logo">
+      <h2 id="licenzaTitolo">🔒 Attivazione richiesta</h2>
+      <p id="licenzaTesto" class="licenza-testo">Manda il codice macchina qui sotto a chi ti ha dato l'app, e ricevi in cambio il tuo codice di attivazione personale da incollare nel campo sotto.</p>
+
+      <div class="licenza-machine-id">
+        <span class="licenza-machine-id-etichetta">Codice macchina di questo computer:</span>
+        <div class="licenza-machine-id-riga">
+          <code id="licenzaMachineId">caricamento…</code>
+          <button id="btnCopiaMachineId" class="secondario-scuro" title="Copia">📋</button>
+        </div>
+      </div>
+
+      <textarea id="licenzaInput" placeholder="Torecoach attende questo codice, invialo e te ne arriverà un altro da incollare qui dentro!" rows="3"></textarea>
+      <button id="btnAttivaLicenza" class="primario">Attiva</button>
+      <p id="licenzaErrore" class="licenza-errore"></p>
+
+      <a id="linkAcquista" class="btn-acquista" href="#" target="_blank" style="display:none;">💳 Acquista la licenza</a>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <img src="assets/logo-revos.png" alt="REVOS" class="brand-logo">
+      <span class="brand-text">SPORTS <span>ANALYST</span></span>
+    </div>
+    <nav>
+      <button class="active" data-view="analisi">Analisi</button>
+      <button data-view="partite">Partite</button>
+      <button data-view="eventi">Eventi</button>
+      <button data-view="presentazioni">Presentazioni</button>
+      <button data-view="statistiche">Gestione Tag</button>
+      <button data-view="giocatori">Giocatori</button>
+      <button data-view="impostazioni">Impostazioni</button>
+    </nav>
+  </header>
+
+  <div id="bannerAggiornamento" class="banner-aggiornamento" style="display:none;">
+    <span id="bannerAggiornamentoTesto"></span>
+    <button id="btnInstallaAggiornamento" style="display:none;">Riavvia e installa</button>
+  </div>
+
+  <!-- ================= ANALISI (tagging live: Z = inizio, M = fine) ================= -->
+  <main class="layout view active" id="view-analisi">
+    <section class="video-panel">
+      <div class="video-header" id="videoTitle">Nessun video caricato</div>
+      <video id="player" controls></video>
+      <div class="video-controls">
+        <button id="btnApri">🆕 Nuova partita</button>
+        <button id="btnApriEsistente" class="secondario-scuro">📂 Apri partita esistente</button>
+        <span id="tempoCorrente">00:00 / 00:00</span>
+      </div>
+      <div class="cattura-stato" id="catturaStato">
+        Premi <kbd>N</kbd> per segnare l'inizio di un evento, <kbd>M</kbd> per la fine.
+      </div>
+      <div class="eventi-salvati-nota" id="eventiSalvatiNota" style="display:none;"></div>
+    </section>
+
+    <section class="tag-panel" id="tagPanel">
+      <div class="riferimento-squadra" id="riferimentoSquadra" style="display:none;">
+        <h3>SQUADRA DI RIFERIMENTO</h3>
+        <div class="squadra-buttons" id="squadraButtons"></div>
+        <div class="giocatore-buttons" id="giocatoreButtons"></div>
+      </div>
+
+      <h2>TAG</h2>
+      <div class="selettore-pannello">
+        <label>Pannello: <select id="selettorePannelloAnalisi"></select></label>
+      </div>
+      <div id="categorie"></div>
+      <textarea id="notaEvento" class="nota-evento" placeholder="Nota (facoltativa)…" rows="2"></textarea>
+      <button id="btnSalvaTag" class="salva-tag" disabled>🏷 SALVA EVENTO</button>
+    </section>
+  </main>
+
+  <div class="modal-overlay" id="modalNuovaPartita">
+    <div class="modal">
+      <h2>Nuova partita</h2>
+      <label>Squadra casa <input id="npCasa" placeholder="es. Modena"></label>
+      <label>Squadra ospite <input id="npOspite" placeholder="es. Cassano Magnago"></label>
+      <label>Data <input id="npData" type="date"></label>
+      <label>Stagione <input id="npStagione" placeholder="es. 2026-27"></label>
+      <label>Competizione <input id="npCompetizione" placeholder="es. Serie A Silver"></label>
+      <div class="modal-video">
+        <button id="npSelezionaVideo">Seleziona video MP4</button>
+        <span id="npVideoScelto">nessun file scelto</span>
+      </div>
+      <div class="modal-azioni">
+        <button id="npAnnulla" class="secondario">Annulla</button>
+        <button id="npCrea">Crea e apri</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalApriPartita">
+    <div class="modal">
+      <h2>Apri partita esistente</h2>
+      <div id="elencoApriPartita" class="elenco-apri-partita"></div>
+      <div class="modal-azioni">
+        <button id="apriPartitaAnnulla" class="secondario">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PARTITE (archivio con filtri) ================= -->
+  <main class="archivio view" id="view-partite">
+    <div class="archivio-filtri">
+      <h1>ARCHIVIO</h1>
+      <select id="filtroStagione"><option value="">Stagione</option></select>
+      <select id="filtroSquadra"><option value="">Squadra</option></select>
+      <select id="filtroCompetizione"><option value="">Competizione</option></select>
+      <select id="filtroAvversario"><option value="">Avversario · Tutti</option></select>
+      <input id="filtroRicerca" type="search" placeholder="🔎 Cerca">
+    </div>
+
+    <div class="archivio-totali" id="archivioTotali"></div>
+
+    <div class="archivio-lista" id="archivioLista"></div>
+  </main>
+
+  <!-- ================= EVENTI (partite -> eventi -> seleziona -> presentazione) ================= -->
+  <main class="eventi-layout view" id="view-eventi">
+    <section class="eventi-partite">
+      <h2>PARTITE</h2>
+      <div id="eventiElencoPartite"></div>
+    </section>
+
+    <section class="eventi-lista-wrap">
+      <div class="eventi-toolbar">
+        <h2 id="eventiPartitaTitolo">Seleziona una partita</h2>
+        <span id="contatoreSelezioneEventi" class="contatore-selezione" style="display:none;"></span>
+        <button id="btnSpostaGruppoSu" class="secondario-scuro" disabled title="Sposta su gli eventi selezionati">⬆ Sposta su</button>
+        <button id="btnSpostaGruppoGiu" class="secondario-scuro" disabled title="Sposta giù gli eventi selezionati">⬇ Sposta giù</button>
+        <button id="btnImportaPresentazione" disabled>➕ Importa in presentazione</button>
+      </div>
+
+      <div class="eventi-ordina-nota">Ordina per tag: clicca una categoria, tieni <kbd>Shift</kbd> e clicca un'altra per un ordinamento secondario</div>
+      <div class="eventi-filtro-gruppo" id="eventiOrdinaCategorie"></div>
+      <div id="eventiStatoOrdinamento" class="stato-ordinamento"></div>
+
+      <div class="eventi-filtro-gruppo" id="eventiFiltroSquadra"></div>
+      <div id="eventiAvvisoFiltro" class="eventi-avviso-filtro" style="display:none;"></div>
+
+      <div class="eventi-selezione-riga">
+        <button id="btnSelezionaTuttiEventi" class="btn-selezione-tutti">☑️ Seleziona tutti</button>
+        <button id="btnDeselezionaTuttiEventi" class="btn-deselezione-tutti">☐ Deseleziona tutti</button>
+      </div>
+
+      <div class="eventi-tabella" id="eventiTabella"></div>
+    </section>
+  </main>
+
+  <div class="modal-overlay" id="modalImportaPresentazione">
+    <div class="modal">
+      <h2>Importa in presentazione</h2>
+      <label>Presentazione esistente
+        <select id="impPresentazioneEsistente"><option value="">— nessuna —</option></select>
+      </label>
+      <label>Oppure crea nuova presentazione
+        <input id="impNuovaPresentazione" placeholder="Nome nuova presentazione">
+      </label>
+      <div class="modal-azioni">
+        <button id="impAnnulla" class="secondario">Annulla</button>
+        <button id="impConferma">Importa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PRESENTAZIONI (editor: durata + disegni + export) ================= -->
+  <main class="presentazioni-layout view" id="view-presentazioni">
+    <section class="presentazioni-elenco">
+      <h2>PRESENTAZIONI</h2>
+      <div id="elencoPresentazioni"></div>
+    </section>
+
+    <section class="presentazioni-editor">
+      <div class="presentazioni-editor-header">
+        <h2 id="presentazioneTitolo">Nessuna presentazione aperta</h2>
+        <button id="btnEsportaPresentazione" class="primario">⬇ Esporta come MP4</button>
+      </div>
+
+      <div id="exportProgressWrap" class="export-progress-wrap" style="display:none;">
+        <div class="export-progress-barra"><div id="exportProgressBarra" class="export-progress-riempimento"></div></div>
+        <span id="exportProgressTesto" class="export-progress-testo"></span>
+      </div>
+
+      <div class="presentazioni-corpo">
+        <div class="presentazioni-clip-lista-wrap">
+          <button id="btnMostraFormSchermata" class="btn-impostazione schermata-btn-aggiungi">➕ Schermata di testo</button>
+          <div class="audio-tutte-riga">
+            <button id="btnMutaTutte" class="btn-impostazione">🔇 Muta tutte le clip</button>
+            <button id="btnSmutaTutte" class="btn-impostazione">🔊 Riattiva audio su tutte</button>
+          </div>
+          <div class="presentazioni-clip-lista" id="presentazioneClipLista"></div>
+        </div>
+
+        <div id="formSchermata" class="form-schermata" style="display:none;">
+          <span class="etichetta-gruppo">📄 Nuova schermata di testo</span>
+          <label>Sfondo <input type="color" id="schermataSfondoInput" value="#0d1117"></label>
+          <label>Colore testo <input type="color" id="schermataColoreTestoInput" value="#ffffff"></label>
+          <textarea id="schermataTestoInput" placeholder="Scrivi qui il testo della schermata..." rows="3"></textarea>
+          <label>Durata (s) <input type="number" id="schermataDurataInput" min="1" value="4" style="width:55px;"></label>
+          <div class="form-schermata-azioni">
+            <button id="btnInserisciSchermataQui" class="primario">Inserisci prima della clip aperta</button>
+            <button id="btnAggiungiSchermataFine" class="btn-impostazione">Aggiungi in fondo</button>
+            <button id="btnAnnullaSchermata" class="secondario">Annulla</button>
+          </div>
+        </div>
+
+        <div class="presentazioni-preview">
+          <div id="editorClipVideo">
+            <div class="disegno-wrapper">
+              <video id="presentazioneVideo" controls></video>
+              <canvas id="disegnoCanvas"></canvas>
+            </div>
+
+            <div class="play-dedicato">
+              <button id="btnDisegnaFreeze">🎨 Disegna</button>
+              <span class="play-dedicato-nota">Blocca il fotogramma per disegnarci sopra — riparti col tasto play nativo, la barra spazio, o Salva clip</span>
+            </div>
+
+            <div class="momenti-lista-wrap">
+              <div id="momentiLista" class="momenti-lista"></div>
+              <button id="btnNuovoMomento" class="link-btn">+ Nuovo momento di pausa</button>
+            </div>
+
+            <div class="pausa-controls">
+              <label>Durata pausa nel video esportato (s) <input id="pausaDurata" type="number" min="0.5" step="0.5" value="3"></label>
+              <span id="pausaStato" class="pausa-stato">Nessuna pausa impostata per questa clip</span>
+              <button id="btnRimuoviPausa" class="link-btn" style="display:none;">Rimuovi pausa</button>
+            </div>
+
+            <div class="clip-trim-controls">
+              <label>Inizio (s) <input id="trimInizio" type="number" step="0.1"></label>
+              <label>Fine (s) <input id="trimFine" type="number" step="0.1"></label>
+              <label><input type="checkbox" id="clipAudioMuto"> 🔇 Nessun audio</label>
+              <label>Volume <input type="range" id="clipAudioVolume" min="0" max="2" step="0.1" value="1" style="width:90px;"> <span id="clipAudioVolumeEtichetta">100%</span></label>
+              <label>🐢 Velocità <input type="range" id="clipVelocita" min="0.1" max="2" step="0.05" value="1" style="width:90px;"> <span id="clipVelocitaEtichetta">100%</span></label>
+              <button id="btnSalvaClip" class="primario">💾 Salva clip</button>
+              <button id="btnRimuoviClip" class="pericolo">🗑 Rimuovi dalla presentazione</button>
+            </div>
+
+            <div class="disegno-toolbar">
+              <button class="disegno-tool" data-tool="seleziona">🖐 Sposta</button>
+              <button class="disegno-tool" data-tool="percorso">✏️ Percorso</button>
+              <button class="disegno-tool" data-tool="cerchio">◯ Cerchio</button>
+              <button class="disegno-tool" data-tool="triangolo">△ Triangolo</button>
+              <button class="disegno-tool" data-tool="testo">🔤 Testo</button>
+              <button class="disegno-tool" data-tool="testo-fisso" title="Come Testo, ma resta visibile anche mentre il video gioca, sulle clip che scegli">📌 Testo fisso</button>
+              <button class="disegno-tool" data-tool="fascio">💡 Fascio luce</button>
+
+              <label><input type="checkbox" id="optCurva"> Curva</label>
+              <label><input type="checkbox" id="optTratteggiata"> Tratteggiata</label>
+              <label><input type="checkbox" id="optFreccia" checked> Freccia finale</label>
+
+              <input type="color" id="optColore" value="#ff3b30" title="Colore">
+              <input type="range" id="optSpessore" min="1" max="12" value="4" title="Spessore">
+              <select id="optFont">
+                <option value="Barlow">Barlow</option>
+                <option value="Arial">Arial</option>
+                <option value="Georgia">Georgia</option>
+              </select>
+
+              <button id="disegnoAnnulla">↺ Annulla ultimo</button>
+              <button id="disegnoElimina">🗑 Elimina selezionato</button>
+              <button id="disegnoCancella">🗑 Cancella disegni</button>
+            </div>
+
+            <div class="disegno-toolbar-testo">
+              <span class="etichetta-gruppo">🔤 Opzioni testo:</span>
+              <label>Colore testo <input type="color" id="optTestoColoreTesto" value="#ffffff" title="Colore testo"></label>
+              <label><input type="checkbox" id="optTestoSfondoAttivo" checked> Sfondo</label>
+              <label>Colore sfondo <input type="color" id="optTestoColoreSfondo" value="#000000" title="Colore sfondo testo"></label>
+              <label><input type="checkbox" id="optTestoBordoAttivo" checked> Bordo</label>
+              <label>Colore bordo <input type="color" id="optTestoColoreBordo" value="#ffffff" title="Colore bordo sfondo testo"></label>
+              <label>Dimensione <input type="number" id="optTestoDimensione" min="10" max="72" value="22" style="width:55px;"> px</label>
+              <span class="nota-testo">Invio va a capo, clicca fuori dal campo per confermare</span>
+            </div>
+
+            <div class="disegno-toolbar-testo pannello-testo-fisso" id="pannelloTestoFisso" style="display:none;">
+              <span class="etichetta-gruppo">📌 A quante clip si applica questo testo fisso?</span>
+              <label>Applica (anche a questa) alle prossime <input type="number" id="numeroClipTestoFisso" min="1" value="3" style="width:50px;"> clip</label>
+              <button id="btnApplicaTestoFisso" class="primario">📌 Conferma</button>
+              <span id="esitoTestoFisso" class="nota-testo"></span>
+            </div>
+          </div>
+
+          <div id="editorSchermata" style="display:none;">
+            <div id="schermataPreviewSfondo" class="schermata-preview-sfondo">
+              <div id="schermataPreviewTesto" class="schermata-preview-testo"></div>
+            </div>
+            <div class="form-schermata form-schermata-editor">
+              <span class="etichetta-gruppo">📄 Modifica schermata</span>
+              <label>Sfondo <input type="color" id="schermataEditSfondo"></label>
+              <label>Colore testo <input type="color" id="schermataEditColoreTesto"></label>
+              <textarea id="schermataEditTesto" rows="3"></textarea>
+              <label>Durata (s) <input type="number" id="schermataEditDurata" min="1" style="width:55px;"></label>
+              <div class="form-schermata-azioni">
+                <button id="btnSalvaSchermata" class="primario">💾 Salva schermata</button>
+                <button id="btnRimuoviSchermata" class="pericolo">🗑 Rimuovi dalla presentazione</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= GIOCATORI (squadre per categoria + rosa) ================= -->
+  <main class="giocatori-layout view" id="view-giocatori">
+    <section class="giocatori-squadre">
+      <h2>SQUADRE</h2>
+      <div class="nuova-squadra-form">
+        <input id="nsNome" placeholder="Nome squadra (es. Modena)">
+        <input id="nsCategoria" placeholder="Categoria (es. Serie A Silver)">
+        <button id="btnNuovaSquadra">+ Crea</button>
+      </div>
+      <div id="elencoSquadreGiocatori"></div>
+    </section>
+
+    <section class="giocatori-rosa">
+      <div class="giocatori-rosa-header">
+        <h2 id="rosaSquadraTitolo">Seleziona una squadra</h2>
+        <button id="btnOrdinaPerRuolo" class="btn-impostazione" style="display:none;">🔤 Ordina per ruolo</button>
+      </div>
+
+      <div class="nuovo-giocatore-form" id="nuovoGiocatoreForm" style="display:none;">
+        <input id="ngNome" placeholder="Nome">
+        <input id="ngCognome" placeholder="Cognome">
+        <select id="ngRuolo">
+          <option value="">Ruolo</option>
+          <option value="Portiere">Portiere</option>
+          <option value="Ala sinistra">Ala sinistra</option>
+          <option value="Terzino sinistro">Terzino sinistro</option>
+          <option value="Centrale">Centrale</option>
+          <option value="Terzino destro">Terzino destro</option>
+          <option value="Ala destra">Ala destra</option>
+          <option value="Pivot">Pivot</option>
+        </select>
+        <input id="ngNumero" type="number" placeholder="N°" style="width:60px;">
+        <button id="btnAggiungiGiocatore">+ Aggiungi</button>
+      </div>
+
+      <div id="tabellaRosa"></div>
+    </section>
+  </main>
+
+  <div class="modal-overlay" id="modalEventiGiocatore">
+    <div class="modal modal-largo">
+      <div class="modal-largo-header">
+        <h2 id="titoloEventiGiocatore">Eventi giocatore</h2>
+        <button id="chiudiEventiGiocatore" class="secondario">✕</button>
+      </div>
+
+      <div class="eventi-giocatore-corpo">
+        <div class="eventi-giocatore-lista-wrap">
+          <div class="eventi-ordina-nota">Ordina per tag: clicca una categoria, tieni <kbd>Shift</kbd> e clicca un'altra per un ordinamento secondario</div>
+          <div class="eventi-filtro-gruppo" id="eventiOrdinaCategorieGiocatore"></div>
+          <div id="eventiGiocatoreStatoOrdinamento" class="stato-ordinamento"></div>
+          <div id="listaEventiGiocatore" class="eventi-giocatore-lista"></div>
+          <div class="modal-azioni">
+            <button id="btnImportaEventiGiocatore" class="primario" disabled>➕ Importa in presentazione</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STATISTICHE (ospita Gestione Tag: ogni coach il suo pannello) ================= -->
+  <main class="impostazioni-layout view" id="view-statistiche">
+    <section class="impostazioni-tag">
+      <h2>GESTIONE TAG</h2>
+      <p class="impostazioni-nota">
+        Disattiva un tag o una categoria per nasconderla dal pannello di tagging senza perdere lo storico degli eventi già creati.
+        Aggiungi liberamente nuovi tag o categorie: ogni coach personalizza il proprio pannello.
+        Puoi anche creare <strong>più pannelli diversi</strong> (es. "Partita", "Didattica") e scegliere quale usare in Analisi.
+      </p>
+
+      <div class="selettore-pannello">
+        <label>Pannello: <select id="selettorePannelloGestione"></select></label>
+        <button id="btnNuovoPannello" class="btn-impostazione">+ Nuovo pannello</button>
+        <button id="btnRinominaPannello" class="btn-impostazione">✏️ Rinomina</button>
+        <button id="btnEliminaPannello" class="btn-impostazione pericolo">🗑 Elimina pannello</button>
+      </div>
+
+      <div class="nuova-categoria-form">
+        <input id="ncNome" placeholder="Nome nuova categoria (es. Palla inattiva)">
+        <select id="ncGruppo">
+          <option value="generale">Generale</option>
+          <option value="attacco">Attacco</option>
+          <option value="difesa">Difesa</option>
+        </select>
+        <button id="btnNuovaCategoria">+ Nuova categoria</button>
+      </div>
+
+      <div id="gestioneCategorie"></div>
+    </section>
+  </main>
+
+  <!-- ================= IMPOSTAZIONI (account, abbonamento, video, privacy, supporto, info) ================= -->
+  <main class="impostazioni-app-layout view" id="view-impostazioni">
+    <section class="impostazioni-app-menu">
+      <button class="impostazioni-sezione-btn attiva" data-sezione="account">👤 Account</button>
+      <button class="impostazioni-sezione-btn" data-sezione="abbonamento">💳 Abbonamento</button>
+      <button class="impostazioni-sezione-btn" data-sezione="video">🎥 Video</button>
+      <button class="impostazioni-sezione-btn" data-sezione="privacy">🔐 Privacy &amp; Sicurezza</button>
+      <button class="impostazioni-sezione-btn" data-sezione="supporto">❓ Supporto</button>
+      <button class="impostazioni-sezione-btn" data-sezione="info">ℹ️ Informazioni</button>
+    </section>
+
+    <section class="impostazioni-app-contenuto" id="impostazioniAppContenuto"></section>
+  </main>
+
+  <div class="modal-overlay" id="modalConfermaReset">
+    <div class="modal">
+      <h2>⚠️ Eliminare tutti i dati locali?</h2>
+      <p style="color: var(--muted); font-size: 13px; line-height: 1.5;">
+        Cancella per sempre partite, eventi, giocatori, presentazioni e i tag personalizzati.
+        Non si può annullare. I tag tornano ai valori di default.
+      </p>
+      <label style="display:block; margin: 10px 0; font-size: 13px;">
+        Scrivi <strong>ELIMINA</strong> per confermare:
+        <input id="resetConfermaInput" type="text" style="width:100%; margin-top:6px; background:#1c2530; border:1px solid var(--border); color:var(--text); padding:8px; border-radius:6px;">
+      </label>
+      <div class="modal-azioni">
+        <button id="resetAnnulla" class="secondario">Annulla</button>
+        <button id="resetConferma" style="background:#c62828;">Elimina tutto</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="statusbar">
+    <span id="statoSalvataggio">Pronto</span>
+  </footer>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="drawing.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+{
+  "name": "handball-analyst",
+  "version": "0.1.17",
+  "description": "Software desktop di video editing/tagging per analisi partite di pallamano",
+  "author": "Torecoach",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "icons": "electron-icon-builder --input=./build/icon-1024.png --output=./build --flatten",
+    "dist:mac": "electron-builder --mac --x64 --arm64",
+    "dist:win": "electron-builder --win --x64",
+    "dist:all": "electron-builder --mac --x64 --arm64 --win --x64",
+    "ffmpeg:dev": "rm -rf node_modules/ffmpeg-static && npm_config_platform=darwin npm_config_arch=arm64 npm install ffmpeg-static --no-save",
+    "publish:mac:arm64": "rm -rf node_modules/ffmpeg-static && npm_config_platform=darwin npm_config_arch=arm64 npm install ffmpeg-static --no-save && electron-builder --mac --arm64 --publish always",
+    "publish:mac:x64": "rm -rf node_modules/ffmpeg-static && npm_config_platform=darwin npm_config_arch=x64 npm install ffmpeg-static --no-save && electron-builder --mac --x64 --publish always",
+    "publish:mac": "npm run publish:mac:arm64 && npm run publish:mac:x64 && npm run ffmpeg:dev",
+    "publish:win": "rm -rf node_modules/ffmpeg-static && npm_config_platform=win32 npm_config_arch=x64 npm install ffmpeg-static --no-save && electron-builder --win --x64 --publish always && npm run ffmpeg:dev"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "ffmpeg-static": "^5.2.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "electron-updater": "^6.3.9",
+    "firebase": "^10.14.1"
+  },
+  "devDependencies": {
+    "electron": "33.4.11",
+    "electron-builder": "^25.1.8",
+    "electron-icon-builder": "^2.0.1",
+    "@electron/notarize": "^2.5.0"
+  },
+  "build": {
+    "appId": "com.torecoach.handballanalyst",
+    "productName": "Handball Analyst",
+    "copyright": "Copyright © 2026 Torecoach",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "asarUnpack": [
+      "**/node_modules/ffmpeg-static/**"
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "db.js",
+      "export.js",
+      "licenza.js",
+      "auth-google.js",
+      "db/**/*",
+      "renderer/**/*",
+      "package.json",
+      "!**/*.md"
+    ],
+    "mac": {
+      "category": "public.app-category.sports",
+      "icon": "build/icons/icon.icns",
+      "target": ["dmg", "zip"],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "win": {
+      "icon": "build/icons/icon.ico",
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "afterSign": "build/notarize.js",
+    "publish": {
+      "provider": "github",
+      "owner": "ToreCoach",
+      "repo": "handball-analyst-releases"
+    }
+  }
+}
