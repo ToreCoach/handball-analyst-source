@@ -190,7 +190,7 @@ function renderizzaNodoTag(nodo, contenitore, onToggle, selezionati) {
     const header = document.createElement('button');
     header.type = 'button';
     header.className = 'tag-cartella-header';
-    header.innerHTML = `<span class="chevron">▾</span> 📁 ${nodo.nome}`;
+    header.innerHTML = `<span class="chevron">▾</span> <span class="tag-cartella-icona"></span> ${nodo.nome}`;
 
     const figli = document.createElement('div');
     figli.className = 'tag-cartella-figli';
@@ -372,6 +372,23 @@ const npVideoScelto = document.getElementById('npVideoScelto');
 let videoSelezionatoPath = null;
 
 btnApri.addEventListener('click', () => modalNP.classList.add('active'));
+
+// Replay rallentato: torna indietro di N secondi, riproduce a 0.5x fino al
+// punto in cui si era premuto il tasto, poi torna alla velocità normale
+let replayTraguardoSec = null;
+document.getElementById('btnReplay').addEventListener('click', () => {
+  const secondi = Number(document.getElementById('replaySecondi').value) || 10;
+  replayTraguardoSec = player.currentTime;
+  player.currentTime = Math.max(0, player.currentTime - secondi);
+  player.playbackRate = 0.5;
+  player.play();
+});
+player.addEventListener('timeupdate', () => {
+  if (replayTraguardoSec !== null && player.currentTime >= replayTraguardoSec) {
+    player.playbackRate = 1;
+    replayTraguardoSec = null;
+  }
+});
 document.getElementById('npAnnulla').addEventListener('click', () => modalNP.classList.remove('active'));
 
 document.getElementById('npSelezionaVideo').addEventListener('click', async () => {
@@ -442,6 +459,34 @@ async function apriPartitaInAnalisi(p) {
   } else {
     nota.style.display = 'none';
   }
+
+  caricaTimelineEventi();
+}
+
+// Disegna la colonna "TIMELINE" a sinistra: tutti gli eventi della partita
+// aperta, con i loro tag in fila e la nota — click per saltare a quel punto
+async function caricaTimelineEventi() {
+  const lista = document.getElementById('timelineEventiLista');
+  if (!partitaCorrenteId) { lista.innerHTML = ''; return; }
+
+  const eventi = await window.api.elencoEventiPerPartita(partitaCorrenteId);
+  lista.innerHTML = '';
+
+  eventi.forEach(ev => {
+    const riga = document.createElement('div');
+    riga.className = 'timeline-evento-riga';
+    const tagTesto = (ev.tag || []).map(t => `<span class="te-tag">${t.nome}</span>`).join('<span class="te-separatore">┃</span>');
+    riga.innerHTML = `
+      <span class="te-ora">${formatTime(ev.inizio_sec)}</span>
+      ${tagTesto ? `<span class="te-separatore">┃</span> ${tagTesto}` : ''}
+      ${ev.note ? `<span class="te-nota">${ev.note}</span>` : ''}
+    `;
+    riga.addEventListener('click', () => {
+      player.currentTime = ev.inizio_sec;
+      player.pause();
+    });
+    lista.appendChild(riga);
+  });
 }
 
 // --- Apri partita esistente ---
@@ -537,6 +582,16 @@ function aggiornaStatoCattura() {
   }
 }
 
+document.getElementById('btnAnnullaEvento').addEventListener('click', () => {
+  document.getElementById('tagPanel').classList.remove('active');
+  inizioCatturato = null;
+  fineCatturata = null;
+  tagSelezionati.clear();
+  document.querySelectorAll('#categorie .tag-btn.selezionato').forEach(b => b.classList.remove('selezionato'));
+  document.getElementById('notaEvento').value = '';
+  aggiornaStatoCattura();
+});
+
 // Fase di CATTURA (terzo parametro true): intercetta N/M prima che il player
 // video nativo li gestisca lui stesso (es. M = muto, un tasto riservato dai
 // controlli HTML5 quando il video ha il focus).
@@ -560,6 +615,7 @@ window.addEventListener('keydown', (e) => {
     fineCatturata = Math.max(player.currentTime, inizioCatturato + 0.2);
     player.pause(); // tempo per taggare con calma
     aggiornaStatoCattura();
+    document.getElementById('tagPanel').classList.add('active');
   }
 }, true);
 
@@ -592,9 +648,11 @@ btnSalvaTag.addEventListener('click', async () => {
     tagIds: Array.from(tagSelezionati)
   });
 
+  document.getElementById('tagPanel').classList.remove('active');
   tagSelezionati.clear();
   document.querySelectorAll('#categorie .tag-btn.selezionato').forEach(b => b.classList.remove('selezionato'));
   campoNota.value = ''; // la nota NON è sticky: si azzera ad ogni evento salvato, come i tag
+  caricaTimelineEventi();
 
   // il giocatore NON è sticky: si azzera. La squadra di riferimento invece resta
   // selezionata (sticky) per l'evento successivo, come richiesto.
@@ -1042,13 +1100,29 @@ async function caricaVistaPresentazioni() {
   // è visibile e il video ha la sua dimensione CSS definitiva
   window.dispatchEvent(new Event('resize'));
 
-  const presentazioni = await window.api.elencoPresentazioni();
+  presentazioniInCache = await window.api.elencoPresentazioni();
+  renderizzaElencoPresentazioni();
+}
+
+let presentazioniInCache = [];
+
+function renderizzaElencoPresentazioni() {
+  const filtro = (document.getElementById('cercaPresentazioni')?.value || '').trim().toLowerCase();
+  const presentazioni = filtro
+    ? presentazioniInCache.filter(p => p.nome.toLowerCase().includes(filtro))
+    : presentazioniInCache;
+
   elencoPresentazioniEl.innerHTML = '';
   presentazioni.forEach(p => {
     const riga = document.createElement('div');
     riga.className = 'playlist-riga';
+    if (p.id === presentazioneApertaId) riga.classList.add('attiva');
+    const numeroClip = p.numero_clip ?? 0;
     riga.innerHTML = `
-      <span class="playlist-riga-nome">${p.nome}</span>
+      <div class="playlist-riga-info">
+        <span class="playlist-riga-nome">${p.nome}</span>
+        <span class="playlist-riga-conteggio">${numeroClip} clip</span>
+      </div>
       <button class="playlist-riga-elimina" title="Elimina presentazione">🗑</button>
     `;
     riga.querySelector('.playlist-riga-nome').addEventListener('click', () => apriPresentazione(p.id, p.nome, riga));
@@ -1070,6 +1144,30 @@ async function caricaVistaPresentazioni() {
   });
 }
 
+document.getElementById('cercaPresentazioni').addEventListener('input', renderizzaElencoPresentazioni);
+
+document.querySelectorAll('.pastiglia-colore').forEach(pastiglia => {
+  pastiglia.addEventListener('click', () => {
+    document.querySelectorAll('.pastiglia-colore').forEach(p => p.classList.remove('selezionata'));
+    pastiglia.classList.add('selezionata');
+    document.getElementById('optColore').value = pastiglia.dataset.colore;
+    aggiornaStileDaToolbar();
+  });
+});
+
+document.getElementById('tabStrumentiDisegno').addEventListener('click', () => {
+  document.getElementById('tabStrumentiDisegno').classList.add('attivo');
+  document.getElementById('tabStrumentiTesto').classList.remove('attivo');
+  document.getElementById('pannelloStrumentiDisegno').style.display = 'block';
+  document.getElementById('pannelloStrumentiTesto').style.display = 'none';
+});
+document.getElementById('tabStrumentiTesto').addEventListener('click', () => {
+  document.getElementById('tabStrumentiTesto').classList.add('attivo');
+  document.getElementById('tabStrumentiDisegno').classList.remove('attivo');
+  document.getElementById('pannelloStrumentiTesto').style.display = 'block';
+  document.getElementById('pannelloStrumentiDisegno').style.display = 'none';
+});
+
 async function apriPresentazione(id, nome, rigaEl) {
   document.querySelectorAll('#elencoPresentazioni .playlist-riga').forEach(r => r.classList.remove('attiva'));
   if (rigaEl) rigaEl.classList.add('attiva');
@@ -1086,6 +1184,7 @@ function renderizzaListaClipPresentazione() {
   clipPresentazioneCorrente.forEach((c, i) => {
     const riga = document.createElement('div');
     riga.className = 'pres-clip-riga';
+    riga.dataset.clipId = c.id;
     if (c.id === clipSelezionataId) riga.classList.add('attiva');
 
     if (c.tipo === 'schermata') {
@@ -1099,7 +1198,271 @@ function renderizzaListaClipPresentazione() {
     riga.addEventListener('click', () => apriClipPresentazione(c, riga));
     presentazioneClipLista.appendChild(riga);
   });
+
+  renderizzaTimelineBeta(); // no-op se la vista beta non è attiva in questo momento
 }
+
+// Aggiorna solo l'evidenziazione della clip selezionata (lista classica +
+// timeline), SENZA ricostruire i blocchi — così le miniature già caricate
+// non vengono buttate via e richieste di nuovo ad ogni click
+function aggiornaSelezioneVisuale() {
+  document.querySelectorAll('.pres-clip-riga').forEach(r => {
+    r.classList.toggle('attiva', Number(r.dataset.clipId) === clipSelezionataId);
+  });
+  document.querySelectorAll('.timeline-clip-blocco').forEach(b => {
+    b.classList.toggle('selezionato', Number(b.dataset.clipId) === clipSelezionataId);
+  });
+  const clipSelCorrente = clipPresentazioneCorrente.find(c => c.id === clipSelezionataId);
+  const clipSelValida = !!clipSelCorrente && clipSelCorrente.tipo === 'clip';
+  const btnDividi = document.getElementById('btnDividiClipQui');
+  const btnElimina = document.getElementById('btnEliminaClipTimeline');
+  if (btnDividi) btnDividi.disabled = !clipSelValida;
+  if (btnElimina) btnElimina.disabled = !clipSelezionataId;
+}
+
+// ===================== Timeline beta (stile iMovie/CapCut) =====================
+let timelineBetaAttiva = false;
+const PIXEL_PER_SECONDO = 20; // scala della timeline: pixel per ogni secondo di durata
+const filmstripCache = new Map(); // "clipId-numeroFotogrammi" -> array di immagini base64
+let trascinamentoTrim = null;
+let trascinamentoRiordino = null;
+
+document.getElementById('btnToggleTimelineBeta').addEventListener('click', () => {
+  timelineBetaAttiva = !timelineBetaAttiva;
+  document.getElementById('timelineBetaWrap').style.display = timelineBetaAttiva ? 'flex' : 'none';
+  document.querySelector('.presentazioni-clip-lista-wrap').style.display = timelineBetaAttiva ? 'none' : 'flex';
+  document.querySelector('.presentazioni-corpo').classList.toggle('modalita-timeline-beta', timelineBetaAttiva);
+  document.getElementById('btnToggleTimelineBeta').textContent = timelineBetaAttiva
+    ? '📋 Torna alla lista classica'
+    : '🎬 Prova la nuova timeline (beta)';
+  if (timelineBetaAttiva) renderizzaTimelineBeta();
+});
+
+function renderizzaTimelineBeta() {
+  if (!timelineBetaAttiva) return;
+  try {
+    renderizzaTimelineBetaInterno();
+  } catch (err) {
+    console.error('ERRORE nel rendering della timeline beta:', err);
+  }
+}
+
+function renderizzaTimelineBetaInterno() {
+  const strip = document.getElementById('timelineBetaStrip');
+  strip.innerHTML = '';
+
+  const clipSelCorrente = clipPresentazioneCorrente.find(c => c.id === clipSelezionataId);
+  const clipSelValida = !!clipSelCorrente && clipSelCorrente.tipo === 'clip';
+  document.getElementById('btnDividiClipQui').disabled = !clipSelValida;
+  document.getElementById('btnEliminaClipTimeline').disabled = !clipSelezionataId;
+
+  clipPresentazioneCorrente.forEach((c, indice) => {
+    const blocco = document.createElement('div');
+    blocco.className = 'timeline-clip-blocco' + (c.tipo === 'schermata' ? ' schermata' : '');
+    if (c.id === clipSelezionataId) blocco.classList.add('selezionato');
+    blocco.dataset.clipId = c.id;
+    blocco.draggable = true;
+
+    if (c.tipo === 'schermata') {
+      const anteprimaTesto = (c.schermata_testo || '').split('\n')[0].slice(0, 20) || '(vuota)';
+      blocco.textContent = `${indice + 1}. 📄 ${anteprimaTesto}`;
+    } else {
+      const miniaturaDiv = document.createElement('div');
+      miniaturaDiv.className = 'timeline-clip-filmstrip';
+      blocco.appendChild(miniaturaDiv);
+      caricaMiniaturaClip(c, miniaturaDiv);
+
+      (c.momenti || []).forEach(m => {
+        const durata = Math.max(0.5, c.fine_sec - c.inizio_sec);
+        const frazione = (m.pausa_timestamp_sec - c.inizio_sec) / durata;
+        const puntino = document.createElement('div');
+        puntino.className = 'momento-indicatore';
+        puntino.style.left = `${Math.max(0, Math.min(100, frazione * 100))}%`;
+        blocco.appendChild(puntino);
+      });
+
+      ['sinistra', 'destra'].forEach(lato => {
+        const maniglia = document.createElement('div');
+        maniglia.className = `timeline-trim-maniglia ${lato}`;
+        maniglia.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          blocco.draggable = false; // altrimenti il browser interpreta questo trascinamento come un riordino, non un ridimensionamento
+          trascinamentoTrim = {
+            clipId: c.id, lato, xIniziale: e.clientX,
+            inizioOriginale: c.inizio_sec, fineOriginale: c.fine_sec,
+            eventoInizio: c.evento_inizio_sec, eventoFine: c.evento_fine_sec
+          };
+        });
+        blocco.appendChild(maniglia);
+      });
+
+      const etichetta = document.createElement('span');
+      etichetta.className = 'timeline-clip-etichetta';
+      etichetta.dataset.ruoloEtichetta = 'timestamp'; // per poterla aggiornare live durante il trascinamento
+      etichetta.textContent = `${indice + 1}.  ${formattaTimestamp(c.inizio_sec)} - ${formattaTimestamp(c.fine_sec)}`;
+      blocco.appendChild(etichetta);
+    }
+
+    blocco.addEventListener('click', () => {
+      if (trascinamentoTrim) return; // evita di selezionare per sbaglio mentre si trascina
+      apriClipPresentazione(c);
+    });
+
+    blocco.addEventListener('dragstart', (e) => {
+      trascinamentoRiordino = { clipId: c.id };
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    blocco.addEventListener('dragover', (e) => e.preventDefault());
+    blocco.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      if (!trascinamentoRiordino || trascinamentoRiordino.clipId === c.id) return;
+      await spostaClipPrimaDi(trascinamentoRiordino.clipId, c.id);
+      trascinamentoRiordino = null;
+    });
+
+    strip.appendChild(blocco);
+  });
+
+  const cardAggiungi = document.createElement('div');
+  cardAggiungi.className = 'timeline-clip-aggiungi';
+  cardAggiungi.innerHTML = '➕<br>Aggiungi clip';
+  cardAggiungi.title = 'Le clip si aggiungono dalla pagina Eventi, selezionando un evento e inviandolo a questa presentazione';
+  cardAggiungi.addEventListener('click', () => {
+    alert('Per aggiungere una clip, vai nella pagina "Eventi", seleziona l\'evento che vuoi e invialo a questa presentazione.');
+  });
+  strip.appendChild(cardAggiungi);
+}
+
+// Formatta secondi assoluti (posizione nel video sorgente) come MM:SS, per le etichette delle card
+function formattaTimestamp(sec) {
+  const s = Math.max(0, Math.round(sec ?? 0));
+  const min = Math.floor(s / 60);
+  const secResto = s % 60;
+  return `${min}:${String(secResto).padStart(2, '0')}`;
+}
+
+// Genera (o riusa dalla cache) un singolo fotogramma di anteprima per la card
+let codaMiniature = Promise.resolve(); // catena che serializza le richieste non in cache
+
+async function caricaMiniaturaClip(clip, contenitore) {
+  const chiaveCache = `${clip.id}-1`;
+  let immagini = filmstripCache.get(chiaveCache);
+
+  if (!immagini) {
+    // in coda: aspetto che la richiesta precedente finisca prima di lanciare
+    // questa — lanciarle tutte insieme sullo stesso video sorgente (magari
+    // su disco esterno) sembra farne fallire alcune
+    codaMiniature = codaMiniature.then(async () => {
+      if (filmstripCache.has(chiaveCache)) return; // un'altra chiamata l'ha già presa nel frattempo
+      try {
+        const risultato = await window.api.generaFilmstrip({ clipId: clip.id, numeroFotogrammi: 1 });
+        filmstripCache.set(chiaveCache, risultato);
+      } catch (err) {
+        console.error('Miniatura non generata per la clip', clip.id, ':', err);
+        filmstripCache.set(chiaveCache, []);
+      }
+    });
+    await codaMiniature;
+    immagini = filmstripCache.get(chiaveCache) || [];
+  }
+
+  // la clip potrebbe essere stata rimossa dal DOM nel frattempo (rendering nuovo partito)
+  if (document.body.contains(contenitore) && immagini.length > 0) {
+    contenitore.innerHTML = `<img src="${immagini[0]}">`;
+  }
+}
+
+// Trascinamento delle maniglie per accorciare/allungare una clip (aggiorna solo
+// l'etichetta con il nuovo orario, la card resta a dimensione fissa)
+document.addEventListener('mousemove', (e) => {
+  if (!trascinamentoTrim) return;
+  const t = trascinamentoTrim;
+  const deltaSecondi = (e.clientX - t.xIniziale) / PIXEL_PER_SECONDO;
+  const blocco = document.querySelector(`.timeline-clip-blocco[data-clip-id="${t.clipId}"]`);
+  if (!blocco) return;
+  const etichetta = blocco.querySelector('[data-ruolo-etichetta="timestamp"]');
+
+  if (t.lato === 'sinistra') {
+    let nuovoInizio = t.inizioOriginale + deltaSecondi;
+    nuovoInizio = Math.max(t.eventoInizio ?? -Infinity, Math.min(nuovoInizio, t.fineOriginale - 0.5));
+    t.inizioCorrente = nuovoInizio;
+  } else {
+    let nuovaFine = t.fineOriginale + deltaSecondi;
+    nuovaFine = Math.min(t.eventoFine ?? Infinity, Math.max(nuovaFine, t.inizioOriginale + 0.5));
+    t.fineCorrente = nuovaFine;
+  }
+  if (etichetta) {
+    const inizioMostrato = t.inizioCorrente ?? t.inizioOriginale;
+    const fineMostrato = t.fineCorrente ?? t.fineOriginale;
+    etichetta.textContent = `${formattaTimestamp(inizioMostrato)} - ${formattaTimestamp(fineMostrato)}`;
+  }
+});
+
+document.addEventListener('mouseup', async () => {
+  if (!trascinamentoTrim) return;
+  const t = trascinamentoTrim;
+  trascinamentoTrim = null;
+
+  const bloccoCoinvolto = document.querySelector(`.timeline-clip-blocco[data-clip-id="${t.clipId}"]`);
+  if (bloccoCoinvolto) bloccoCoinvolto.draggable = true;
+
+  const nuovoInizio = t.inizioCorrente ?? t.inizioOriginale;
+  const nuovaFine = t.fineCorrente ?? t.fineOriginale;
+  if (nuovoInizio === t.inizioOriginale && nuovaFine === t.fineOriginale) return;
+
+  const clip = clipPresentazioneCorrente.find(c => c.id === t.clipId);
+  if (!clip) return;
+
+  await window.api.aggiornaClipPresentazione({
+    id: t.clipId,
+    inizio_sec: nuovoInizio,
+    fine_sec: nuovaFine,
+    audio_muto: !!clip.audio_muto,
+    audio_volume: clip.audio_volume ?? 1,
+    velocita: clip.velocita ?? 1
+  });
+
+  clipPresentazioneCorrente = await window.api.clipPresentazione(presentazioneApertaId);
+  renderizzaListaClipPresentazione();
+});
+
+async function spostaClipPrimaDi(clipIdDaSpostare, clipIdBersaglio) {
+  const ids = clipPresentazioneCorrente.map(c => c.id);
+  const daIndice = ids.indexOf(clipIdDaSpostare);
+  if (daIndice === -1 || !ids.includes(clipIdBersaglio)) return;
+  ids.splice(daIndice, 1);
+  ids.splice(ids.indexOf(clipIdBersaglio), 0, clipIdDaSpostare);
+
+  await window.api.riordinaClipPresentazione(ids);
+  clipPresentazioneCorrente = await window.api.clipPresentazione(presentazioneApertaId);
+  renderizzaListaClipPresentazione();
+}
+
+document.getElementById('btnDividiClipQui').addEventListener('click', async () => {
+  if (!clipSelezionataId) return;
+  const clipCorrente = clipPresentazioneCorrente.find(c => c.id === clipSelezionataId);
+  if (!clipCorrente || clipCorrente.tipo !== 'clip') return;
+
+  const nuovoId = await window.api.dividiClip({ clipId: clipSelezionataId, puntoDivisioneSec: presentazioneVideo.currentTime });
+  if (!nuovoId) {
+    alert('Sposta la testina di riproduzione dentro la clip, non troppo vicino ai bordi, poi riprova.');
+    return;
+  }
+  clipPresentazioneCorrente = await window.api.clipPresentazione(presentazioneApertaId);
+  renderizzaListaClipPresentazione();
+});
+
+document.getElementById('btnEliminaClipTimeline').addEventListener('click', async () => {
+  if (!clipSelezionataId) return;
+  if (!confirm('Eliminare questa clip dalla presentazione?')) return;
+  await window.api.rimuoviClipPresentazione(clipSelezionataId);
+  clipSelezionataId = null;
+  clipPresentazioneCorrente = await window.api.clipPresentazione(presentazioneApertaId);
+  renderizzaListaClipPresentazione();
+});
+
+
 
 let ultimoPausaSec = null; // momento in cui il coach ha messo in pausa per disegnare, per il momento ATTIVO
 let pausaProgrammataDaCodice = false; // true quando siamo NOI a mettere in pausa (anteprima automatica), non l'utente
@@ -1108,9 +1471,16 @@ let momentoAttivoId = null; // id del momento attualmente caricato nel canvas (n
 let momentiPassatiInPreview = new Set(); // id dei momenti già "attivati" durante la riproduzione corrente
 
 async function apriClipPresentazione(c) {
-  document.querySelectorAll('.pres-clip-riga').forEach(r => r.classList.remove('attiva'));
+  try {
+    await apriClipPresentazioneInterno(c);
+  } catch (err) {
+    console.error('ERRORE nell\'apertura della clip:', err);
+  }
+}
+
+async function apriClipPresentazioneInterno(c) {
   clipSelezionataId = c.id;
-  renderizzaListaClipPresentazione();
+  aggiornaSelezioneVisuale();
 
   if (c.tipo === 'schermata') {
     document.getElementById('editorClipVideo').style.display = 'none';
@@ -1139,6 +1509,7 @@ async function apriClipPresentazione(c) {
 
   trimInizio.value = inizio.toFixed(1);
   trimFine.value = fine.toFixed(1);
+  aggiornaControlliVoiceover(c);
 
   // parto sempre con nessuno strumento attivo: i controlli video restano usabili subito
   document.querySelectorAll('.disegno-tool').forEach(b => b.classList.remove('selezionato'));
@@ -1171,6 +1542,91 @@ async function apriClipPresentazione(c) {
   document.getElementById('clipVelocitaEtichetta').textContent = `${Math.round(velocita * 100)}%`;
   presentazioneVideo.playbackRate = velocita; // così l'anteprima mostra già l'effetto rallentatore/accelerato
 }
+
+// ===================== Voice-over (commento vocale per clip) =====================
+let mediaRecorderVoiceover = null;
+let chunkVoiceover = [];
+let registrazioneInCorsoClipId = null;
+
+function aggiornaControlliVoiceover(c) {
+  const player = document.getElementById('voiceoverPlayer');
+  const btnElimina = document.getElementById('btnEliminaVoiceover');
+  if (c.voiceover_path) {
+    player.src = `file://${c.voiceover_path}`;
+    player.style.display = 'inline-block';
+    btnElimina.style.display = 'inline';
+  } else {
+    player.removeAttribute('src');
+    player.style.display = 'none';
+    btnElimina.style.display = 'none';
+  }
+}
+
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+document.getElementById('btnRegistraVoiceover').addEventListener('click', async () => {
+  const btn = document.getElementById('btnRegistraVoiceover');
+  const stato = document.getElementById('voiceoverStato');
+
+  if (registrazioneInCorsoClipId) {
+    mediaRecorderVoiceover.stop(); // sto già registrando: questo click ferma
+    return;
+  }
+  if (!clipSelezionataId) return;
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorderVoiceover = new MediaRecorder(stream);
+    chunkVoiceover = [];
+    registrazioneInCorsoClipId = clipSelezionataId;
+
+    mediaRecorderVoiceover.ondataavailable = (e) => chunkVoiceover.push(e.data);
+    mediaRecorderVoiceover.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      presentazioneVideo.pause();
+      const blob = new Blob(chunkVoiceover, { type: 'audio/webm' });
+      const base64 = arrayBufferToBase64(await blob.arrayBuffer());
+
+      stato.textContent = '💾 Salvataggio…';
+      const clipIdRegistrata = registrazioneInCorsoClipId;
+      await window.api.salvaVoiceover({ clipId: clipIdRegistrata, audioBase64: base64 });
+
+      clipPresentazioneCorrente = await window.api.clipPresentazione(presentazioneApertaId);
+      const clipAggiornata = clipPresentazioneCorrente.find(cc => cc.id === clipIdRegistrata);
+      if (clipAggiornata && clipSelezionataId === clipIdRegistrata) aggiornaControlliVoiceover(clipAggiornata);
+
+      registrazioneInCorsoClipId = null;
+      btn.textContent = '🎙️ Voice-over';
+      btn.classList.remove('registrazione-attiva');
+      stato.textContent = '';
+    };
+
+    presentazioneVideo.currentTime = Number(trimInizio.value) || 0;
+    presentazioneVideo.play();
+    mediaRecorderVoiceover.start();
+    btn.textContent = '⏹ Stop';
+    btn.classList.add('registrazione-attiva');
+    stato.textContent = '🔴 In registrazione…';
+  } catch (err) {
+    console.error('Microfono non disponibile:', err);
+    alert('Non riesco ad accedere al microfono. Controlla i permessi del Mac per questa app (Impostazioni di Sistema → Privacy e Sicurezza → Microfono).');
+    registrazioneInCorsoClipId = null;
+  }
+});
+
+document.getElementById('btnEliminaVoiceover').addEventListener('click', async () => {
+  if (!clipSelezionataId) return;
+  if (!confirm('Eliminare il voice-over di questa clip?')) return;
+  await window.api.eliminaVoiceover(clipSelezionataId);
+  clipPresentazioneCorrente = await window.api.clipPresentazione(presentazioneApertaId);
+  const clipAggiornata = clipPresentazioneCorrente.find(cc => cc.id === clipSelezionataId);
+  if (clipAggiornata) aggiornaControlliVoiceover(clipAggiornata);
+});
 
 document.getElementById('clipAudioMuto').addEventListener('change', (e) => {
   presentazioneVideo.muted = e.target.checked;
@@ -1300,10 +1756,10 @@ function aggiornaStatoPausa() {
   const stato = document.getElementById('pausaStato');
   const btnRimuovi = document.getElementById('btnRimuoviPausa');
   if (ultimoPausaSec != null) {
-    stato.textContent = `Pausa impostata a ${formatTime(ultimoPausaSec)} — nel video esportato il fotogramma resterà fermo lì con i disegni`;
+    stato.textContent = `⏸ Pausa a ${formatTime(ultimoPausaSec)}`;
     btnRimuovi.style.display = 'inline';
   } else {
-    stato.textContent = 'Nessuna pausa impostata per questo momento (metti in pausa il video per impostarla)';
+    stato.textContent = 'Nessuna pausa';
     btnRimuovi.style.display = 'none';
   }
 }

@@ -54,6 +54,11 @@
 
   <!-- ================= ANALISI (tagging live: Z = inizio, M = fine) ================= -->
   <main class="layout view active" id="view-analisi">
+    <aside class="timeline-eventi" id="timelineEventi">
+      <h3>TIMELINE</h3>
+      <div id="timelineEventiLista" class="timeline-eventi-lista"></div>
+    </aside>
+
     <section class="video-panel">
       <div class="video-header" id="videoTitle">Nessun video caricato</div>
       <video id="player" controls></video>
@@ -61,6 +66,12 @@
         <button id="btnApri">🆕 Nuova partita</button>
         <button id="btnApriEsistente" class="secondario-scuro">📂 Apri partita esistente</button>
         <span id="tempoCorrente">00:00 / 00:00</span>
+        <label class="replay-select">🔁 <select id="replaySecondi">
+          <option value="5">5s</option>
+          <option value="10" selected>10s</option>
+          <option value="15">15s</option>
+        </select></label>
+        <button id="btnReplay" class="secondario-scuro" title="Torna indietro e riguarda al rallentatore">🔁 Replay</button>
       </div>
       <div class="cattura-stato" id="catturaStato">
         Premi <kbd>N</kbd> per segnare l'inizio di un evento, <kbd>M</kbd> per la fine.
@@ -68,21 +79,26 @@
       <div class="eventi-salvati-nota" id="eventiSalvatiNota" style="display:none;"></div>
     </section>
 
-    <section class="tag-panel" id="tagPanel">
-      <div class="riferimento-squadra" id="riferimentoSquadra" style="display:none;">
-        <h3>SQUADRA DI RIFERIMENTO</h3>
-        <div class="squadra-buttons" id="squadraButtons"></div>
-        <div class="giocatore-buttons" id="giocatoreButtons"></div>
-      </div>
+    <div class="modal-overlay" id="tagPanel">
+      <div class="modal modal-largo">
+        <div class="riferimento-squadra" id="riferimentoSquadra" style="display:none;">
+          <h3>SQUADRA DI RIFERIMENTO</h3>
+          <div class="squadra-buttons" id="squadraButtons"></div>
+          <div class="giocatore-buttons" id="giocatoreButtons"></div>
+        </div>
 
-      <h2>TAG</h2>
-      <div class="selettore-pannello">
-        <label>Pannello: <select id="selettorePannelloAnalisi"></select></label>
+        <h2>TAG</h2>
+        <div class="selettore-pannello">
+          <label>Pannello: <select id="selettorePannelloAnalisi"></select></label>
+        </div>
+        <div id="categorie"></div>
+        <textarea id="notaEvento" class="nota-evento" placeholder="Nota (facoltativa)…" rows="2"></textarea>
+        <div class="modal-azioni">
+          <button id="btnSalvaTag" class="salva-tag" disabled>🏷 SALVA EVENTO</button>
+          <button id="btnAnnullaEvento" class="secondario">✕ Annulla</button>
+        </div>
       </div>
-      <div id="categorie"></div>
-      <textarea id="notaEvento" class="nota-evento" placeholder="Nota (facoltativa)…" rows="2"></textarea>
-      <button id="btnSalvaTag" class="salva-tag" disabled>🏷 SALVA EVENTO</button>
-    </section>
+    </div>
   </main>
 
   <div class="modal-overlay" id="modalNuovaPartita">
@@ -182,12 +198,14 @@
   <main class="presentazioni-layout view" id="view-presentazioni">
     <section class="presentazioni-elenco">
       <h2>PRESENTAZIONI</h2>
+      <input type="text" id="cercaPresentazioni" class="cerca-presentazioni-input" placeholder="🔍 Cerca...">
       <div id="elencoPresentazioni"></div>
     </section>
 
     <section class="presentazioni-editor">
       <div class="presentazioni-editor-header">
         <h2 id="presentazioneTitolo">Nessuna presentazione aperta</h2>
+        <button id="btnToggleTimelineBeta" class="secondario">🎬 Prova la nuova timeline (beta)</button>
         <button id="btnEsportaPresentazione" class="primario">⬇ Esporta come MP4</button>
       </div>
 
@@ -197,6 +215,17 @@
       </div>
 
       <div class="presentazioni-corpo">
+        <div id="timelineBetaWrap" class="timeline-beta-wrap" style="display:none;">
+          <div class="timeline-beta-toolbar">
+            <button id="btnDividiClipQui" class="btn-impostazione" disabled>✂️ Dividi qui</button>
+            <button id="btnEliminaClipTimeline" class="btn-impostazione btn-pericolo" disabled>🗑️ Elimina clip</button>
+            <span id="timelineBetaInfo" class="timeline-beta-info">Clicca una clip per selezionarla, trascina i bordi per accorciarla</span>
+          </div>
+          <div class="timeline-beta-scroll" id="timelineBetaScroll">
+            <div class="timeline-beta-strip" id="timelineBetaStrip"></div>
+          </div>
+        </div>
+
         <div class="presentazioni-clip-lista-wrap">
           <button id="btnMostraFormSchermata" class="btn-impostazione schermata-btn-aggiungi">➕ Schermata di testo</button>
           <div class="audio-tutte-riga">
@@ -227,66 +256,23 @@
             </div>
 
             <div class="play-dedicato">
-              <button id="btnDisegnaFreeze">🎨 Disegna</button>
-              <span class="play-dedicato-nota">Blocca il fotogramma per disegnarci sopra — riparti col tasto play nativo, la barra spazio, o Salva clip</span>
-            </div>
-
-            <div class="momenti-lista-wrap">
-              <div id="momentiLista" class="momenti-lista"></div>
-              <button id="btnNuovoMomento" class="link-btn">+ Nuovo momento di pausa</button>
-            </div>
-
-            <div class="pausa-controls">
-              <label>Durata pausa nel video esportato (s) <input id="pausaDurata" type="number" min="0.5" step="0.5" value="3"></label>
-              <span id="pausaStato" class="pausa-stato">Nessuna pausa impostata per questa clip</span>
-              <button id="btnRimuoviPausa" class="link-btn" style="display:none;">Rimuovi pausa</button>
-            </div>
-
-            <div class="clip-trim-controls">
+              <button id="btnDisegnaFreeze" title="Blocca il fotogramma per disegnarci sopra — riparti col tasto play nativo, la barra spazio, o Salva clip">🎨 Disegna</button>
               <label>Inizio (s) <input id="trimInizio" type="number" step="0.1"></label>
               <label>Fine (s) <input id="trimFine" type="number" step="0.1"></label>
-              <label><input type="checkbox" id="clipAudioMuto"> 🔇 Nessun audio</label>
-              <label>Volume <input type="range" id="clipAudioVolume" min="0" max="2" step="0.1" value="1" style="width:90px;"> <span id="clipAudioVolumeEtichetta">100%</span></label>
-              <label>🐢 Velocità <input type="range" id="clipVelocita" min="0.1" max="2" step="0.05" value="1" style="width:90px;"> <span id="clipVelocitaEtichetta">100%</span></label>
-              <button id="btnSalvaClip" class="primario">💾 Salva clip</button>
-              <button id="btnRimuoviClip" class="pericolo">🗑 Rimuovi dalla presentazione</button>
-            </div>
-
-            <div class="disegno-toolbar">
-              <button class="disegno-tool" data-tool="seleziona">🖐 Sposta</button>
-              <button class="disegno-tool" data-tool="percorso">✏️ Percorso</button>
-              <button class="disegno-tool" data-tool="cerchio">◯ Cerchio</button>
-              <button class="disegno-tool" data-tool="triangolo">△ Triangolo</button>
-              <button class="disegno-tool" data-tool="testo">🔤 Testo</button>
-              <button class="disegno-tool" data-tool="testo-fisso" title="Come Testo, ma resta visibile anche mentre il video gioca, sulle clip che scegli">📌 Testo fisso</button>
-              <button class="disegno-tool" data-tool="fascio">💡 Fascio luce</button>
-
-              <label><input type="checkbox" id="optCurva"> Curva</label>
-              <label><input type="checkbox" id="optTratteggiata"> Tratteggiata</label>
-              <label><input type="checkbox" id="optFreccia" checked> Freccia finale</label>
-
-              <input type="color" id="optColore" value="#ff3b30" title="Colore">
-              <input type="range" id="optSpessore" min="1" max="12" value="4" title="Spessore">
-              <select id="optFont">
-                <option value="Barlow">Barlow</option>
-                <option value="Arial">Arial</option>
-                <option value="Georgia">Georgia</option>
-              </select>
-
-              <button id="disegnoAnnulla">↺ Annulla ultimo</button>
-              <button id="disegnoElimina">🗑 Elimina selezionato</button>
-              <button id="disegnoCancella">🗑 Cancella disegni</button>
-            </div>
-
-            <div class="disegno-toolbar-testo">
-              <span class="etichetta-gruppo">🔤 Opzioni testo:</span>
-              <label>Colore testo <input type="color" id="optTestoColoreTesto" value="#ffffff" title="Colore testo"></label>
-              <label><input type="checkbox" id="optTestoSfondoAttivo" checked> Sfondo</label>
-              <label>Colore sfondo <input type="color" id="optTestoColoreSfondo" value="#000000" title="Colore sfondo testo"></label>
-              <label><input type="checkbox" id="optTestoBordoAttivo" checked> Bordo</label>
-              <label>Colore bordo <input type="color" id="optTestoColoreBordo" value="#ffffff" title="Colore bordo sfondo testo"></label>
-              <label>Dimensione <input type="number" id="optTestoDimensione" min="10" max="72" value="22" style="width:55px;"> px</label>
-              <span class="nota-testo">Invio va a capo, clicca fuori dal campo per confermare</span>
+              <label>Pausa (s) <input id="pausaDurata" type="number" min="0.5" step="0.5" value="3"></label>
+              <span id="pausaStato" class="pausa-stato" title="Nel video esportato il fotogramma resterà fermo lì con i disegni">Nessuna pausa</span>
+              <button id="btnRimuoviPausa" class="link-btn" style="display:none;">Rimuovi pausa</button>
+              <div id="momentiLista" class="momenti-lista" style="display:none;"></div>
+              <button id="btnNuovoMomento" class="link-btn" style="display:none;">+ Nuovo momento</button>
+              <label title="Nessun audio"><input type="checkbox" id="clipAudioMuto"> 🔇</label>
+              <label title="Volume">Vol <input type="range" id="clipAudioVolume" min="0" max="2" step="0.1" value="1" style="width:70px;"> <span id="clipAudioVolumeEtichetta">100%</span></label>
+              <label title="Velocità">🐢 <input type="range" id="clipVelocita" min="0.1" max="2" step="0.05" value="1" style="width:70px;"> <span id="clipVelocitaEtichetta">100%</span></label>
+              <button id="btnSalvaClip" class="primario">💾 Salva</button>
+              <button id="btnRimuoviClip" class="pericolo" title="Rimuovi dalla presentazione">🗑</button>
+              <button id="btnRegistraVoiceover" title="Registra un commento vocale sincronizzato con questa clip">🎙️ Voice-over</button>
+              <span id="voiceoverStato" class="pausa-stato"></span>
+              <audio id="voiceoverPlayer" controls style="display:none;height:26px;vertical-align:middle;"></audio>
+              <button id="btnEliminaVoiceover" class="link-btn" style="display:none;">Elimina voice-over</button>
             </div>
 
             <div class="disegno-toolbar-testo pannello-testo-fisso" id="pannelloTestoFisso" style="display:none;">
@@ -316,6 +302,71 @@
         </div>
       </div>
     </section>
+
+    <aside class="presentazioni-strumenti">
+      <h2>STRUMENTI DI DISEGNO</h2>
+      <div class="strumenti-tabs">
+        <button id="tabStrumentiDisegno" class="strumenti-tab attivo">Disegno</button>
+        <button id="tabStrumentiTesto" class="strumenti-tab">Testo</button>
+      </div>
+
+      <div id="pannelloStrumentiDisegno" class="pannello-strumenti">
+        <div class="strumenti-grid">
+          <button class="disegno-tool" data-tool="seleziona">🖐<br>Sposta</button>
+          <button class="disegno-tool" data-tool="cerchio">◯<br>Cerchio</button>
+          <button class="disegno-tool" data-tool="triangolo">△<br>Triangolo</button>
+          <button class="disegno-tool" data-tool="percorso">✏️<br>Percorso</button>
+          <button class="disegno-tool" data-tool="testo">🔤<br>Testo</button>
+          <button class="disegno-tool" data-tool="testo-fisso" title="Come Testo, ma resta visibile anche mentre il video gioca, sulle clip che scegli">📌<br>Testo fisso</button>
+          <button class="disegno-tool" data-tool="fascio">🔦<br>Fascio luce</button>
+        </div>
+
+        <div class="strumenti-sezione">
+          <span class="strumenti-sezione-titolo">Colore</span>
+          <input type="color" id="optColore" value="#ff3b30" style="display:none;">
+          <div class="palette-colori" id="paletteColori">
+            <button class="pastiglia-colore selezionata" data-colore="#ff3b30" style="background:#ff3b30;" title="Rosso"></button>
+            <button class="pastiglia-colore" data-colore="#0a84ff" style="background:#0a84ff;" title="Blu"></button>
+            <button class="pastiglia-colore" data-colore="#30d158" style="background:#30d158;" title="Verde"></button>
+            <button class="pastiglia-colore" data-colore="#ffd60a" style="background:#ffd60a;" title="Giallo"></button>
+            <button class="pastiglia-colore" data-colore="#ffffff" style="background:#ffffff;" title="Bianco"></button>
+            <button class="pastiglia-colore" data-colore="#000000" style="background:#000000;" title="Nero"></button>
+          </div>
+        </div>
+        <div class="strumenti-sezione">
+          <span class="strumenti-sezione-titolo">Spessore</span>
+          <input type="range" id="optSpessore" min="1" max="12" value="4" title="Spessore">
+        </div>
+
+        <label class="strumenti-toggle-riga"><input type="checkbox" id="optCurva"> Curva</label>
+        <label class="strumenti-toggle-riga"><input type="checkbox" id="optTratteggiata"> Tratteggiata</label>
+        <label class="strumenti-toggle-riga"><input type="checkbox" id="optFreccia" checked> Freccia finale</label>
+
+        <div class="strumenti-azioni">
+          <button id="disegnoAnnulla">↺ Annulla ultimo</button>
+          <button id="disegnoElimina">🗑 Elimina selezionato</button>
+          <button id="disegnoCancella">🗑 Cancella disegni</button>
+        </div>
+      </div>
+
+      <div id="pannelloStrumentiTesto" class="pannello-strumenti" style="display:none;">
+        <div class="disegno-toolbar-testo">
+          <span class="etichetta-gruppo">🔤 Opzioni testo:</span>
+          <label>Colore testo <input type="color" id="optTestoColoreTesto" value="#ffffff" title="Colore testo"></label>
+          <label><input type="checkbox" id="optTestoSfondoAttivo" checked> Sfondo</label>
+          <label>Colore sfondo <input type="color" id="optTestoColoreSfondo" value="#000000" title="Colore sfondo testo"></label>
+          <label><input type="checkbox" id="optTestoBordoAttivo" checked> Bordo</label>
+          <label>Colore bordo <input type="color" id="optTestoColoreBordo" value="#ffffff" title="Colore bordo sfondo testo"></label>
+          <label>Dimensione <input type="number" id="optTestoDimensione" min="10" max="72" value="22" style="width:55px;"> px</label>
+          <label>Font <select id="optFont">
+            <option value="Barlow">Barlow</option>
+            <option value="Arial">Arial</option>
+            <option value="Georgia">Georgia</option>
+          </select></label>
+          <span class="nota-testo">Invio va a capo, clicca fuori dal campo per confermare</span>
+        </div>
+      </div>
+    </aside>
   </main>
 
   <!-- ================= GIOCATORI (squadre per categoria + rosa) ================= -->

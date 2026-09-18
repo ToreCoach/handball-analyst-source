@@ -4,7 +4,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { autoUpdater } = require('electron-updater');
 const { getDb, initDb } = require('./db');
-const { esportaPresentazione } = require('./export');
+const { esportaPresentazione, generaFilmstrip } = require('./export');
 const { verificaLicenza } = require('./licenza');
 const { accediConGoogle, impostaGoogleClientId, impostaGoogleClientSecret } = require('./auth-google');
 
@@ -747,7 +747,11 @@ ipcMain.handle('partite:elimina', (_e, id) => {
 // =========================================================
 
 ipcMain.handle('presentazioni:elenco', () => {
-  return getDb().prepare('SELECT * FROM presentazioni ORDER BY id DESC').all();
+  return getDb().prepare(`
+    SELECT p.*, (SELECT COUNT(*) FROM presentazione_eventi pe WHERE pe.presentazione_id = p.id) AS numero_clip
+    FROM presentazioni p
+    ORDER BY p.id DESC
+  `).all();
 });
 
 ipcMain.handle('presentazioni:crea', (_e, nome) => {
@@ -798,7 +802,7 @@ ipcMain.handle('presentazioni:clip', (_e, presentazioneId) => {
     SELECT
       pe.id, pe.ordine, pe.inizio_sec, pe.fine_sec,
       pe.tipo, pe.schermata_sfondo, pe.schermata_testo, pe.schermata_colore_testo, pe.schermata_durata_sec,
-      pe.audio_muto, pe.audio_volume, pe.velocita,
+      pe.audio_muto, pe.audio_volume, pe.velocita, pe.voiceover_path,
       e.id AS evento_id, e.inizio_sec AS evento_inizio_sec, e.fine_sec AS evento_fine_sec,
       p.video_path,
       sc.nome AS squadra_casa, so.nome AS squadra_ospite
@@ -858,7 +862,117 @@ ipcMain.handle('disegniMomento:elimina', (_e, id) => {
   getDb().prepare('DELETE FROM disegni_momento WHERE id = ?').run(id);
 });
 
-// Muta/smuta TUTTE le clip video di una presentazione in un colpo solo
+// Divide una clip in due, nel punto indicato (in secondi, nella stessa scala
+// di inizio_sec/fine_sec). La prima metà si accorcia fino a quel punto, la
+// seconda diventa una nuova clip subito dopo. Gli eventuali disegni (momenti)
+// dal punto di divisione in poi passano alla nuova clip — ognuna delle due
+// metà può così avere il proprio disegno, senza serve più di uno per clip.
+ipcMain.handle('presentazioni:dividiClip', (_e, { clipId, puntoDivisioneSec }) => {
+  const database = getDb();
+  const originale = database.prepare('SELECT * FROM presentazione_eventi WHERE id = ?').get(clipId);
+  if (!originale || originale.tipo !== 'clip') return null;
+  if (puntoDivisioneSec <= originale.inizio_sec || puntoDivisioneSec >= originale.fine_sec) return null;
+
+  const transazione = database.transaction(() => {
+    // faccio spazio nell'ordine per la nuova clip, subito dopo l'originale
+    database.prepare(`
+      UPDATE presentazione_eventi SET ordine = ordine + 1
+      WHERE presentazione_id = ? AND ordine > ?
+    `).run(originale.presentazione_id, originale.ordine);
+
+    const info = database.prepare(`
+      INSERT INTO presentazione_eventi
+        (presentazione_id, evento_id, ordine, inizio_sec, fine_sec, tipo, audio_muto, audio_volume, velocita)
+      VALUES (?, ?, ?, ?, ?, 'clip', ?, ?, ?)
+    `).run(
+      originale.presentazione_id, originale.evento_id, originale.ordine + 1,
+      puntoDivisioneSec, originale.fine_sec,
+      originale.audio_muto, originale.audio_volume, originale.velocita
+    );
+    const nuovoClipId = info.lastInsertRowid;
+
+    database.prepare('UPDATE presentazione_eventi SET fine_sec = ? WHERE id = ?').run(puntoDivisioneSec, originale.id);
+
+    database.prepare(`
+      UPDATE disegni_momento SET presentazione_evento_id = ?
+      WHERE presentazione_evento_id = ? AND pausa_timestamp_sec >= ?
+    `).run(nuovoClipId, originale.id, puntoDivisioneSec);
+
+    return nuovoClipId;
+  });
+
+  return transazione();
+});
+
+// Genera la striscia di miniature per una clip (usata nella nuova timeline).
+// Le immagini vengono lette e restituite come base64, così il pannello le
+// mostra subito senza dover gestire percorsi di file temporanei lato pagina.
+ipcMain.handle('presentazioni:generaFilmstrip', async (_e, { clipId, numeroFotogrammi }) => {
+  const database = getDb();
+  const clip = database.prepare(`
+    SELECT pe.inizio_sec, pe.fine_sec, p.video_path
+    FROM presentazione_eventi pe
+    LEFT JOIN eventi e ON e.id = pe.evento_id
+    LEFT JOIN partite p ON p.id = e.partita_id
+    WHERE pe.id = ?
+  `).get(clipId);
+  if (!clip || !clip.video_path) return [];
+
+  const cartellaTemp = path.join(app.getPath('temp'), `handball-analyst-filmstrip-${clipId}`);
+  fs.mkdirSync(cartellaTemp, { recursive: true });
+
+  try {
+    const percorsi = await generaFilmstrip(clip.video_path, clip.inizio_sec, clip.fine_sec, numeroFotogrammi || 8, cartellaTemp, 'f');
+    return percorsi.map(p => {
+      const buffer = fs.readFileSync(p);
+      return `data:image/jpeg;base64,${buffer.toString('base64')}`;
+    });
+  } catch (err) {
+    // il video di questa specifica partita potrebbe avere un formato/codec
+    // che ffmpeg non riesce a decodificare — meglio niente miniature che
+    // bloccare tutto il resto della timeline
+    console.error('Impossibile generare la filmstrip per la clip', clipId, ':', err.message);
+    return [];
+  } finally {
+    fs.rmSync(cartellaTemp, { recursive: true, force: true });
+  }
+});
+
+// Riassegna l'ordine di tutte le clip di una presentazione, in base
+// all'elenco di id passato (nell'ordine desiderato) — usato dal
+// trascinamento per riordinare nella timeline
+ipcMain.handle('presentazioni:riordinaClip', (_e, clipIdsInOrdine) => {
+  const database = getDb();
+  const aggiorna = database.prepare('UPDATE presentazione_eventi SET ordine = ? WHERE id = ?');
+  const transazione = database.transaction((ids) => {
+    ids.forEach((id, indice) => aggiorna.run(indice, id));
+  });
+  transazione(clipIdsInOrdine);
+});
+
+// Salva l'audio di voice-over registrato dal coach per una clip (ricevuto
+// come base64 dal renderer, che lo registra col microfono). Se questa clip
+// aveva già un voice-over precedente, il vecchio file viene sovrascritto.
+ipcMain.handle('presentazioni:salvaVoiceover', (_e, { clipId, audioBase64 }) => {
+  const cartella = path.join(app.getPath('userData'), 'voiceover');
+  fs.mkdirSync(cartella, { recursive: true });
+  const filePath = path.join(cartella, `clip-${clipId}.webm`);
+  fs.writeFileSync(filePath, Buffer.from(audioBase64, 'base64'));
+  getDb().prepare('UPDATE presentazione_eventi SET voiceover_path = ? WHERE id = ?').run(filePath, clipId);
+  return filePath;
+});
+
+// Rimuove il voice-over di una clip (file + riferimento nel database)
+ipcMain.handle('presentazioni:eliminaVoiceover', (_e, clipId) => {
+  const database = getDb();
+  const clip = database.prepare('SELECT voiceover_path FROM presentazione_eventi WHERE id = ?').get(clipId);
+  if (clip && clip.voiceover_path && fs.existsSync(clip.voiceover_path)) {
+    fs.unlinkSync(clip.voiceover_path);
+  }
+  database.prepare('UPDATE presentazione_eventi SET voiceover_path = NULL WHERE id = ?').run(clipId);
+});
+
+
 // (le schermate di testo non hanno audio, non serve toccarle)
 ipcMain.handle('presentazioni:mutaTutteClip', (_e, { presentazioneId, muto }) => {
   getDb().prepare(`
@@ -978,7 +1092,7 @@ ipcMain.handle('presentazioni:esporta', async (_e, { presentazioneId, overlayPng
   const clip = database.prepare(`
     SELECT pe.id, pe.inizio_sec, pe.fine_sec,
            pe.tipo, pe.schermata_sfondo, pe.schermata_testo, pe.schermata_colore_testo, pe.schermata_durata_sec,
-           pe.audio_muto, pe.audio_volume, pe.velocita,
+           pe.audio_muto, pe.audio_volume, pe.velocita, pe.voiceover_path,
            e.inizio_sec AS evento_inizio, e.fine_sec AS evento_fine, p.video_path
     FROM presentazione_eventi pe
     LEFT JOIN eventi e ON e.id = pe.evento_id
@@ -1023,7 +1137,8 @@ ipcMain.handle('presentazioni:esporta', async (_e, { presentazioneId, overlayPng
         schermataDurataSec: c.schermata_durata_sec,
         audioMuto: !!c.audio_muto,
         audioVolume: c.audio_volume ?? 1.0,
-        velocita: c.velocita ?? 1.0
+        velocita: c.velocita ?? 1.0,
+        voiceoverPath: c.voiceover_path || null
       };
     }),
     cartellaTemp,

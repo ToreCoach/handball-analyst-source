@@ -25,6 +25,7 @@ function initDb() {
   migraSchermatePresentazione(dbInstance);
   migraDisegniMomento(dbInstance);
   migraAudioClip(dbInstance);
+  migraVoiceover(dbInstance);
   migraOrdineEventi(dbInstance);
   migraOrdineGiocatori(dbInstance);
   migraGerarchiaTag(dbInstance);
@@ -172,6 +173,17 @@ function migraAudioClip(db) {
   }
   if (!colonne.includes('velocita')) {
     db.exec('ALTER TABLE presentazione_eventi ADD COLUMN velocita REAL DEFAULT 1.0');
+  }
+}
+
+// Percorso del file audio di voice-over registrato dal coach per questa clip
+// (facoltativo — se presente, viene mixato nell'export sopra all'audio originale)
+function migraVoiceover(db) {
+  const tabelle = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(t => t.name);
+  if (!tabelle.includes('presentazione_eventi')) return;
+  const colonne = db.prepare("PRAGMA table_info(presentazione_eventi)").all().map(c => c.name);
+  if (!colonne.includes('voiceover_path')) {
+    db.exec('ALTER TABLE presentazione_eventi ADD COLUMN voiceover_path TEXT');
   }
 }
 

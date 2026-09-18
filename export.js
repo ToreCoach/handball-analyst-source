@@ -98,6 +98,41 @@ function estraiFotogramma(videoSorgente, timestampSec, outputPngPath) {
   });
 }
 
+// Estrae più fotogrammi distribuiti nella durata della clip, per la
+// "filmstrip" (striscia di miniature) della timeline. Un'unica chiamata a
+// ffmpeg con più istanti, molto più veloce che richiamarlo N volte separate.
+// Estrae un singolo fotogramma in un punto preciso, forzando un formato
+// pixel "sicuro" (yuvj420p, quello standard dei JPEG) — evita che ffmpeg
+// debba indovinare il formato di output, che è quello che falliva con
+// il metodo screenshots() su alcuni video.
+function estraiUnFotogrammaSicuro(videoSorgente, timestampSec, outputPath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg(videoSorgente)
+      .seekInput(Math.max(0, timestampSec))
+      .outputOptions(['-vframes', '1', '-vf', 'scale=160:-2', '-pix_fmt', 'yuvj420p'])
+      .output(outputPath)
+      .on('end', () => resolve(outputPath))
+      .on('error', reject)
+      .run();
+  });
+}
+
+function generaFilmstrip(videoSorgente, inizioSec, fineSec, numeroFotogrammi, cartellaOutput, prefissoFile) {
+  const durata = Math.max(0.5, fineSec - inizioSec);
+  const timestamps = [];
+  for (let i = 0; i < numeroFotogrammi; i++) {
+    // presi a metà di ciascuna "fetta", evita il fotogramma esatto di
+    // inizio/fine (spesso nero o in transizione)
+    const frazione = (i + 0.5) / numeroFotogrammi;
+    timestamps.push(inizioSec + durata * frazione);
+  }
+
+  return Promise.all(timestamps.map((t, i) => {
+    const outputPath = path.join(cartellaOutput, `${prefissoFile}-${i + 1}.jpg`);
+    return estraiUnFotogrammaSicuro(videoSorgente, t, outputPath);
+  }));
+}
+
 // Compone il fotogramma fermo con l'overlay dei disegni sopra
 function componiFotogrammaConOverlay(framePngPath, overlayPngPath, outputPngPath) {
   return new Promise((resolve, reject) => {
@@ -297,6 +332,14 @@ async function esportaPresentazione({ clips, cartellaTemp, outputFinale, preset,
         audioMuto: c.audioMuto,
         audioVolume: c.audioVolume
       });
+
+      // se il coach ha registrato un commento vocale per questa clip, lo
+      // mixo sopra all'audio già tagliato, prima di passare alla prossima
+      if (c.voiceoverPath && fs.existsSync(c.voiceoverPath)) {
+        const outConVoiceover = path.join(cartellaTemp, `clipfinale_${i}_voiceover.mp4`);
+        await mixaVoiceover(outPath, c.voiceoverPath, outConVoiceover);
+        fs.renameSync(outConVoiceover, outPath);
+      }
     }
 
     clipFinali.push(outPath);
@@ -312,4 +355,19 @@ async function esportaPresentazione({ clips, cartellaTemp, outputFinale, preset,
   return concatenaFile(clipFinali, outputFinale, cartellaTemp);
 }
 
-module.exports = { tagliaClip, tagliaClipConMomenti, esportaPresentazione };
+// Mixa il voice-over del coach sopra l'audio già presente nella clip
+// esportata. La durata segue quella del video (se il coach ha parlato più a
+// lungo della clip, la parte in eccesso viene semplicemente tagliata via).
+function mixaVoiceover(videoPath, voiceoverPath, outputPath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg(videoPath)
+      .input(voiceoverPath)
+      .complexFilter(['[0:a][1:a]amix=inputs=2:duration=first:dropout_transition=2[aout]'])
+      .outputOptions(['-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac'])
+      .on('end', () => resolve(outputPath))
+      .on('error', reject)
+      .save(outputPath);
+  });
+}
+
+module.exports = { tagliaClip, tagliaClipConMomenti, esportaPresentazione, generaFilmstrip, mixaVoiceover };
