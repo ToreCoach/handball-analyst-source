@@ -1,6 +1,6 @@
 {
   "name": "handball-analyst",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "Software desktop di video editing/tagging per analisi partite di pallamano",
   "author": "Torecoach",
   "main": "main.js",
