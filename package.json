@@ -1,6 +1,6 @@
 {
   "name": "handball-analyst",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "Software desktop di video editing/tagging per analisi partite di pallamano",
   "author": "Torecoach",
   "main": "main.js",
@@ -17,7 +17,7 @@
     "publish:win": "rm -rf node_modules/ffmpeg-static && npm_config_platform=win32 npm_config_arch=x64 npm install ffmpeg-static --no-save && electron-builder --win --x64 --publish always && npm run ffmpeg:dev"
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0",
+    "better-sqlite3": "^11.10.0",
     "electron-updater": "^6.3.9",
     "ffmpeg-static": "^5.2.0",
     "firebase": "^10.14.1",
