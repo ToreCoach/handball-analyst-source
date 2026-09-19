@@ -269,7 +269,7 @@ h1, h2, h3 {
 .playlist-riga:hover, .playlist-riga.attiva { background: var(--chip); }
 
 #playlistVideo { width: 100%; border-radius: 6px; background: #000; }
-#presentazioneVideo { display: block; width: 100%; height: auto; border-radius: 6px; background: #000; }
+#presentazioneVideo { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center bottom; border-radius: 6px; background: #000; }
 
 .playlist-player-controls {
   display: flex;
@@ -434,7 +434,7 @@ h1, h2, h3 {
   color: var(--text);
 }
 
-.disegno-wrapper { position: relative; }
+.disegno-wrapper { position: relative; width: 100%; flex: 1; min-height: 0; }
 
 #disegnoCanvas {
   position: absolute;
@@ -598,12 +598,12 @@ h1, h2, h3 {
 
 .presentazioni-editor { display: flex; flex-direction: column; }
 .presentazioni-editor-header { flex-shrink: 0; }
-.presentazioni-corpo { display: grid; grid-template-columns: 240px 1fr; grid-template-rows: minmax(160px, 1fr) auto; gap: 14px; flex: 1; min-height: 0; overflow: hidden; }
+.presentazioni-corpo { display: grid; grid-template-columns: 240px 1fr; grid-template-rows: minmax(110px, 1fr) auto; gap: 10px; flex: 1; min-height: 0; overflow: hidden; }
 .presentazioni-corpo.modalita-timeline-beta { grid-template-columns: 0 1fr; }
 .presentazioni-corpo.modalita-timeline-beta .presentazioni-preview { grid-column: 1 / -1; }
 
-.presentazioni-preview { overflow-y: auto; min-height: 0; }
-#presentazioneVideo { max-height: 60vh; }
+.presentazioni-preview { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box; }
+#presentazioneVideo { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center bottom; border-radius: 6px; background: #000; }
 
 .presentazioni-clip-lista-wrap { display: flex; flex-direction: column; gap: 8px; min-height: 0; height: 100%; }
 
@@ -796,7 +796,7 @@ h1, h2, h3 {
 .rosa-riga:hover { background: var(--chip); }
 
 /* ===================== Play/Pausa dedicato (fuori dal canvas) ===================== */
-.play-dedicato {
+.play-dedicato { flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1355,7 +1355,7 @@ h1, h2, h3 {
   box-shadow: 0 4px 18px rgba(0,0,0,0.5);
 }
 
-#editorClipVideo { position: relative; }
+#editorClipVideo { position: relative; display: flex !important; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 
 .audio-tutte-riga { display: flex; gap: 6px; }
 .audio-tutte-riga button { flex: 1; font-size: 11px; padding: 6px 4px; }
@@ -1548,8 +1548,8 @@ h1, h2, h3 {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  height: 130px;
-  min-height: 130px;
+  height: 110px;
+  min-height: 110px;
 }
 .timeline-beta-toolbar {
   display: flex;
@@ -1804,3 +1804,9 @@ h1, h2, h3 {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
+
+.play-dedicato button.primario { color: #04220f; }
+#btnEsportaPresentazione, #btnToggleTimelineBeta { font-size: 14px; font-weight: 500; }
+
+.play-dedicato button.primario { color: #04220f; }
+#btnEsportaPresentazione, #btnToggleTimelineBeta { font-size: 14px; font-weight: 500; }
