@@ -107,13 +107,13 @@
   </main>
 
   <div class="modal-overlay" id="modalNuovaPartita">
-    <div class="modal">
+    <div class="modal modal-solida">
       <h2>Nuova partita</h2>
-      <label>Squadra casa <input id="npCasa" placeholder="es. Modena"></label>
-      <label>Squadra ospite <input id="npOspite" placeholder="es. Cassano Magnago"></label>
+      <label>Squadra casa <input id="npCasa" placeholder="es. Modena" autocomplete="off"></label>
+      <label>Squadra ospite <input id="npOspite" placeholder="es. Cassano Magnago" autocomplete="off"></label>
       <label>Data <input id="npData" type="date"></label>
-      <label>Stagione <input id="npStagione" placeholder="es. 2026-27"></label>
-      <label>Competizione <input id="npCompetizione" placeholder="es. Serie A Silver"></label>
+      <label>Stagione <input id="npStagione" placeholder="es. 2026-27" autocomplete="off"></label>
+      <label>Competizione <input id="npCompetizione" placeholder="es. Serie A Silver" autocomplete="off"></label>
       <div class="modal-video">
         <button id="npSelezionaVideo">Seleziona video MP4</button>
         <span id="npVideoScelto">nessun file scelto</span>
@@ -363,7 +363,7 @@
         <button id="btnNuovoMomento" class="link-btn" style="display:none;">+ Nuovo momento</button>
         <label title="Nessun audio"><input type="checkbox" id="clipAudioMuto"> 🔇</label>
         <label title="Volume">Vol <input type="range" id="clipAudioVolume" min="0" max="2" step="0.1" value="1" style="width:70px;"> <span id="clipAudioVolumeEtichetta">100%</span></label>
-        <label title="Velocità">🐢 <input type="range" id="clipVelocita" min="0.1" max="2" step="0.05" value="1" style="width:70px;"> <span id="clipVelocitaEtichetta">100%</span></label>
+        <label title="Velocità di riproduzione della clip">Velocità <input type="range" id="clipVelocita" min="0.1" max="2" step="0.05" value="1" style="width:70px;"> <span id="clipVelocitaEtichetta">100%</span></label>
         <button id="btnSalvaClip" class="primario">💾 Salva</button>
         <button id="btnRimuoviClip" class="pericolo" title="Rimuovi dalla presentazione">🗑</button>
         <button id="btnRegistraVoiceover" title="Registra un commento vocale sincronizzato con questa clip">🎙️ Voice-over</button>
@@ -379,10 +379,11 @@
     <section class="giocatori-squadre">
       <h2>SQUADRE</h2>
       <div class="nuova-squadra-form">
-        <input id="nsNome" placeholder="Nome squadra (es. Modena)">
-        <input id="nsCategoria" placeholder="Categoria (es. Serie A Silver)">
+        <input id="nsNome" placeholder="Nome squadra (es. Modena)" autocomplete="off">
+        <input id="nsCategoria" placeholder="Categoria (es. Serie A Silver)" autocomplete="off">
         <button id="btnNuovaSquadra">+ Crea</button>
       </div>
+      <input type="search" id="cercaSquadreGiocatori" class="cerca-presentazioni-input" placeholder="🔎 Cerca squadra...">
       <div id="elencoSquadreGiocatori"></div>
     </section>
 

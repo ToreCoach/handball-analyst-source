@@ -1,11 +1,14 @@
 :root {
-  --bg: #0a0d1f;
-  --panel: rgba(18, 23, 52, 0.65);
-  --border: rgba(255, 255, 255, 0.09);
-  --text: #e8eaf6;
+  --bg: #05060f;
+  --panel: rgba(15, 20, 46, 0.42);
+  --border: rgba(94, 190, 255, 0.28);
+  --text: #f3f6ff;
   --accent: #8bfc03;
   --accent-strong: #5ecb00;
-  --muted: #8a93c9;
+  --primary: #3b82f6;
+  --secondary: #22d3ee;
+  --accent2: #a855f7;
+  --muted: #8892bd;
   --chip: rgba(255, 255, 255, 0.06);
 }
 
@@ -18,12 +21,36 @@ button, input, select, textarea { font-family: inherit; }
 
 body {
   margin: 0;
-  background: var(--bg) radial-gradient(circle at 66% 28%, #1c2b63 0%, #10163a 45%, #060815 100%) fixed;
+  background:
+    var(--bg)
+    radial-gradient(circle at 8% 6%, rgba(59, 130, 246, 0.38), transparent 38%)
+    radial-gradient(circle at 92% 10%, rgba(34, 211, 238, 0.30), transparent 44%)
+    radial-gradient(circle at 80% 92%, rgba(168, 85, 247, 0.32), transparent 48%)
+    radial-gradient(circle at 15% 85%, rgba(139, 252, 3, 0.10), transparent 40%)
+    radial-gradient(circle at 66% 28%, #223a7a 0%, #131c4a 45%, #060815 100%)
+    fixed;
   color: var(--text);
   font-family: 'Barlow', 'Segoe UI', sans-serif;
   height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(
+      115deg,
+      rgba(94, 190, 255, 0.05) 0px,
+      rgba(94, 190, 255, 0.05) 2px,
+      transparent 2px,
+      transparent 140px
+    );
+  mix-blend-mode: screen;
 }
 
 h1, h2, h3 {
@@ -76,6 +103,7 @@ h1, h2, h3 {
   color: #04220f;
   font-weight: 700;
   border-bottom: none;
+  box-shadow: 0 0 18px rgba(139, 252, 3, 0.5), inset 0 1px 0 rgba(255,255,255,0.25);
 }
 
 .layout {
@@ -375,6 +403,55 @@ h1, h2, h3 {
   flex-direction: column;
   gap: 12px;
 }
+
+/* Modale "solido": meno trasparenza, sfondo quasi pieno */
+.modal.modal-solida {
+  background: #0d1230f0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Combo a tendina: input di testo + bottone "▾" che apre l'elenco completo
+   dei valori già usati in passato, come aprire una cartella — click su una
+   voce compila il campo. Digitare nell'input filtra l'elenco in tempo reale. */
+.combo-wrap { position: relative; display: flex; }
+.combo-wrap input { flex: 1; }
+.combo-toggle {
+  background: var(--chip);
+  border: 1px solid var(--border);
+  border-left: none;
+  color: var(--muted);
+  width: 34px;
+  cursor: pointer;
+  border-radius: 0 6px 6px 0;
+  font-size: 11px;
+}
+.combo-wrap input { border-radius: 6px 0 0 6px; }
+.combo-toggle:hover { color: var(--accent); }
+
+.combo-lista {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #0d1230;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  z-index: 60;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.combo-lista.aperta { display: block; }
+.combo-voce {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.combo-voce:hover, .combo-voce.evidenziata { background: var(--chip); }
+.combo-lista-vuota { padding: 8px 12px; font-size: 12px; color: var(--muted); font-style: italic; }
 
 .modal h2 { margin: 0 0 6px 0; font-size: 16px; }
 
@@ -1706,18 +1783,18 @@ h1, h2, h3 {
 
 .strumenti-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 5px;
   margin-bottom: 8px;
 }
 .strumenti-grid .disegno-tool {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px;
-  height: 40px;
-  font-size: 10px;
-  line-height: 1.15;
+  height: 36px;
+  font-size: 9px;
+  line-height: 1.1;
   text-align: center;
-  padding: 3px;
+  padding: 2px;
 }
 
 .strumenti-sezione { margin-bottom: 7px; }
@@ -1756,11 +1833,11 @@ h1, h2, h3 {
 .playlist-riga-conteggio { font-size: 11px; color: var(--muted); }
 
 /* Palette colori prestabiliti (invece del selettore nativo) */
-.palette-colori { display: flex; gap: 8px; flex-wrap: wrap; }
+.palette-colori { display: flex; gap: 5px; flex-wrap: wrap; }
 .pastiglia-colore {
-  width: 28px; height: 28px;
+  width: 13px; height: 13px;
   border-radius: 50%;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   cursor: pointer;
   padding: 0;
 }
@@ -1813,7 +1890,7 @@ h1, h2, h3 {
 
 /* ===== Miglioramenti richiesti 20/09 (v2) ===== */
 #btnDisegnaFreeze.attivo { background: var(--accent) !important; border-color: var(--accent) !important; color: #04220f !important; font-weight: 700; }
-#view-presentazioni.active { grid-template-columns: 200px 1fr 280px; }
+#view-presentazioni.active { grid-template-columns: 200px 1fr 340px; }
 #btnSalvaClip.primario { color: #0a2a52 !important; }
 #btnToggleTimelineBeta { display: none !important; }
 
@@ -1859,3 +1936,28 @@ h1, h2, h3 {
   font-size: 22px;
   text-shadow: 0 0 12px rgba(140,230,0,0.25);
 }
+
+/* ===== Glow neon sui pannelli principali (nuovo sistema visivo REVOS) ===== */
+.video-panel, .tag-panel,
+.presentazioni-elenco, .presentazioni-editor, .presentazioni-strumenti,
+.eventi-partite, .eventi-lista-wrap, .timeline-eventi,
+.giocatori-squadre, .giocatori-rosa,
+.impostazioni-app-menu, .impostazioni-app-contenuto,
+.playlist-salvate-elenco, .playlist-player,
+.ricerca-tag-panel, .ricerca-risultati,
+.gestione-categoria-blocco {
+  position: relative;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 0 1px rgba(94, 190, 255, 0.12),
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 0 46px rgba(59, 130, 246, 0.14),
+    0 0 90px rgba(139, 252, 3, 0.06);
+}
+.topbar {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 1px 0 rgba(94, 190, 255, 0.18), 0 4px 40px rgba(34, 211, 238, 0.12);
+}
+.statusbar { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }

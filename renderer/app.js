@@ -371,7 +371,94 @@ const modalNP = document.getElementById('modalNuovaPartita');
 const npVideoScelto = document.getElementById('npVideoScelto');
 let videoSelezionatoPath = null;
 
-btnApri.addEventListener('click', () => modalNP.classList.add('active'));
+// --------------------------------------------------------------
+// Combo a tendina riusabile: trasforma un <input> in un selettore "tipo
+// apri file" — bottone ▾ che apre l'elenco completo dei valori già usati,
+// click su una voce compila il campo, scrivere nell'input filtra la lista.
+// Va richiamata una volta sola per input (crea la struttura), poi si
+// aggiornano solo i valori con .aggiorna(nuoviValori).
+// --------------------------------------------------------------
+const comboRegistrate = {}; // inputId -> { aggiorna(valori) }
+
+function abilitaComboSelezione(inputId) {
+  if (comboRegistrate[inputId]) return comboRegistrate[inputId];
+
+  const input = document.getElementById(inputId);
+  if (!input) return null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'combo-wrap';
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'combo-toggle';
+  toggle.textContent = '▾';
+  wrap.appendChild(toggle);
+
+  const lista = document.createElement('div');
+  lista.className = 'combo-lista';
+  wrap.appendChild(lista);
+
+  let valoriCorrenti = [];
+
+  function renderizzaLista(filtro) {
+    const f = (filtro || '').toLowerCase();
+    const filtrati = valoriCorrenti.filter(v => v.toLowerCase().includes(f));
+    lista.innerHTML = '';
+    if (filtrati.length === 0) {
+      lista.innerHTML = '<div class="combo-lista-vuota">Nessun valore già usato</div>';
+      return;
+    }
+    filtrati.forEach(v => {
+      const voce = document.createElement('div');
+      voce.className = 'combo-voce';
+      voce.textContent = v;
+      voce.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // evita che l'input perda il focus prima del click
+        input.value = v;
+        chiudi();
+      });
+      lista.appendChild(voce);
+    });
+  }
+
+  function apri() { renderizzaLista(input.value); lista.classList.add('aperta'); }
+  function chiudi() { lista.classList.remove('aperta'); }
+
+  toggle.addEventListener('click', () => {
+    if (lista.classList.contains('aperta')) chiudi(); else apri();
+  });
+  input.addEventListener('focus', apri);
+  input.addEventListener('input', () => renderizzaLista(input.value));
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) chiudi();
+  });
+
+  const api = {
+    aggiorna(nuoviValori) {
+      valoriCorrenti = [...new Set(nuoviValori.filter(v => v && v.trim()))].sort((a, b) => a.localeCompare(b, 'it'));
+    }
+  };
+  comboRegistrate[inputId] = api;
+  return api;
+}
+
+async function popolaComboNuovaPartita() {
+  const opzioni = await window.api.opzioniFiltriArchivio();
+  const nomiSquadre = opzioni.squadre.map(s => s.nome);
+  const nomiStagioni = opzioni.stagioni.map(s => s.label);
+  abilitaComboSelezione('npCasa').aggiorna(nomiSquadre);
+  abilitaComboSelezione('npOspite').aggiorna(nomiSquadre);
+  abilitaComboSelezione('npStagione').aggiorna(nomiStagioni);
+  abilitaComboSelezione('npCompetizione').aggiorna(opzioni.competizioni);
+}
+
+btnApri.addEventListener('click', () => {
+  modalNP.classList.add('active');
+  popolaComboNuovaPartita();
+});
 
 // Replay rallentato: torna indietro di N secondi, riproduce a 0.5x fino al
 // punto in cui si era premuto il tasto, poi torna alla velocità normale
@@ -2187,9 +2274,24 @@ const nuovoGiocatoreForm = document.getElementById('nuovoGiocatoreForm');
 const tabellaRosa = document.getElementById('tabellaRosa');
 
 let squadraApertaInGiocatoriId = null;
+let squadreGiocatoriCorrente = []; // tutte le squadre caricate, per filtrare la ricerca senza richiamare il DB
+const inputCercaSquadreGiocatori = document.getElementById('cercaSquadreGiocatori');
 
 async function caricaVistaGiocatori() {
   const squadre = await window.api.elencoSquadre();
+  squadreGiocatoriCorrente = squadre;
+  abilitaComboSelezione('nsCategoria').aggiorna(squadre.map(s => s.categoria));
+  abilitaComboSelezione('nsNome').aggiorna(squadre.map(s => s.nome));
+  renderizzaElencoSquadreGiocatori();
+}
+
+function renderizzaElencoSquadreGiocatori() {
+  const filtro = (inputCercaSquadreGiocatori.value || '').trim().toLowerCase();
+  const squadre = filtro
+    ? squadreGiocatoriCorrente.filter(sq =>
+        sq.nome.toLowerCase().includes(filtro) || (sq.categoria || '').toLowerCase().includes(filtro))
+    : squadreGiocatoriCorrente;
+
   elencoSquadreGiocatoriEl.innerHTML = '';
 
   squadre.forEach(sq => {
@@ -2216,6 +2318,8 @@ async function caricaVistaGiocatori() {
     elencoSquadreGiocatoriEl.appendChild(riga);
   });
 }
+
+inputCercaSquadreGiocatori.addEventListener('input', debounce(renderizzaElencoSquadreGiocatori, 200));
 
 document.getElementById('btnNuovaSquadra').addEventListener('click', async () => {
   const nome = document.getElementById('nsNome').value.trim();
