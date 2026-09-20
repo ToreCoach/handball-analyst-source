@@ -3078,3 +3078,29 @@ document.getElementById('resetConferma').addEventListener('click', async () => {
   // variabili in memoria delle altre viste dopo un reset totale dei dati
   location.reload();
 });
+
+// ===== Fix: disegni persi in esportazione se il video era già in pausa =====
+// (il salvataggio dipendeva dall'evento nativo "pause", che non scatta se il
+// video è già fermo quando premi "Disegna" — qui il timestamp viene impostato
+// direttamente, senza dipendere da quell'evento)
+document.getElementById('btnDisegnaFreeze').addEventListener('click', () => {
+  ultimoPausaSec = presentazioneVideo.currentTime;
+  if (typeof aggiornaStatoPausa === 'function') aggiornaStatoPausa();
+});
+
+// ===== Miglioramenti richiesti 20/09 (v2) =====
+document.getElementById('timelineBetaWrap').style.display = 'flex';
+document.querySelector('.presentazioni-clip-lista-wrap').style.display = 'none';
+document.querySelector('.presentazioni-corpo').classList.add('modalita-timeline-beta');
+if (typeof timelineBetaAttiva !== 'undefined') timelineBetaAttiva = true;
+if (typeof renderizzaTimelineBeta === 'function') renderizzaTimelineBeta();
+
+const btnDisegnaFreezeEl2 = document.getElementById('btnDisegnaFreeze');
+if (btnDisegnaFreezeEl2 && typeof presentazioneVideo !== 'undefined') {
+  btnDisegnaFreezeEl2.addEventListener('click', () => {
+    btnDisegnaFreezeEl2.classList.add('attivo');
+  });
+  presentazioneVideo.addEventListener('play', () => {
+    btnDisegnaFreezeEl2.classList.remove('attivo');
+  });
+}

@@ -1810,3 +1810,52 @@ h1, h2, h3 {
 
 .play-dedicato button.primario { color: #04220f; }
 #btnEsportaPresentazione, #btnToggleTimelineBeta { font-size: 14px; font-weight: 500; }
+
+/* ===== Miglioramenti richiesti 20/09 (v2) ===== */
+#btnDisegnaFreeze.attivo { background: var(--accent) !important; border-color: var(--accent) !important; color: #04220f !important; font-weight: 700; }
+#view-presentazioni.active { grid-template-columns: 200px 1fr 280px; }
+#btnSalvaClip.primario { color: #0a2a52 !important; }
+#btnToggleTimelineBeta { display: none !important; }
+
+/* ===== Acronimo REVOS in basso a sinistra (vista Analisi) ===== */
+.revos-acronimo {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  padding-top: 16px;
+  background: var(--panel);
+}
+.revos-acronimo-nome {
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+.revos-acronimo-testo {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-top: 4px;
+}
+
+/* ===== Sposta "Disegna" sotto gli strumenti (fix definitivo scroll) ===== */
+#editorClipVideo { position: relative; display: block !important; height: 100%; overflow: hidden; }
+.disegno-wrapper { position: relative; width: 100%; height: 100%; flex: none; }
+.play-dedicato-sidebar { flex-direction: column; align-items: stretch; margin-top: 10px; }
+.play-dedicato-sidebar label, .play-dedicato-sidebar button { width: 100%; box-sizing: border-box; }
+
+/* ===== Grafica REVOS più accattivante ===== */
+.revos-acronimo-linea {
+  height: 3px;
+  width: 70%;
+  margin: 6px 0 8px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ff3b30, #ffd60a, #30d158, #0a84ff, #ab47bc);
+}
+.revos-acronimo-nome {
+  font-size: 22px;
+  text-shadow: 0 0 12px rgba(140,230,0,0.25);
+}

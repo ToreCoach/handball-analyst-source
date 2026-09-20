@@ -57,6 +57,11 @@
     <aside class="timeline-eventi" id="timelineEventi">
       <h3>TIMELINE</h3>
       <div id="timelineEventiLista" class="timeline-eventi-lista"></div>
+      <div class="revos-acronimo">
+        <div class="revos-acronimo-nome">REVOS</div>
+        <div class="revos-acronimo-linea"></div>
+        <div class="revos-acronimo-testo">REVIEW · VIDEO · OBSERVATION · SPORT</div>
+      </div>
     </aside>
 
     <section class="video-panel">
@@ -255,26 +260,6 @@
               <canvas id="disegnoCanvas"></canvas>
             </div>
 
-            <div class="play-dedicato">
-              <button id="btnDisegnaFreeze" title="Blocca il fotogramma per disegnarci sopra — riparti col tasto play nativo, la barra spazio, o Salva clip">🎨 Disegna</button>
-              <label>Inizio (s) <input id="trimInizio" type="number" step="0.1"></label>
-              <label>Fine (s) <input id="trimFine" type="number" step="0.1"></label>
-              <label>Pausa (s) <input id="pausaDurata" type="number" min="0.5" step="0.5" value="3"></label>
-              <span id="pausaStato" class="pausa-stato" title="Nel video esportato il fotogramma resterà fermo lì con i disegni">Nessuna pausa</span>
-              <button id="btnRimuoviPausa" class="link-btn" style="display:none;">Rimuovi pausa</button>
-              <div id="momentiLista" class="momenti-lista" style="display:none;"></div>
-              <button id="btnNuovoMomento" class="link-btn" style="display:none;">+ Nuovo momento</button>
-              <label title="Nessun audio"><input type="checkbox" id="clipAudioMuto"> 🔇</label>
-              <label title="Volume">Vol <input type="range" id="clipAudioVolume" min="0" max="2" step="0.1" value="1" style="width:70px;"> <span id="clipAudioVolumeEtichetta">100%</span></label>
-              <label title="Velocità">🐢 <input type="range" id="clipVelocita" min="0.1" max="2" step="0.05" value="1" style="width:70px;"> <span id="clipVelocitaEtichetta">100%</span></label>
-              <button id="btnSalvaClip" class="primario">💾 Salva</button>
-              <button id="btnRimuoviClip" class="pericolo" title="Rimuovi dalla presentazione">🗑</button>
-              <button id="btnRegistraVoiceover" title="Registra un commento vocale sincronizzato con questa clip">🎙️ Voice-over</button>
-              <span id="voiceoverStato" class="pausa-stato"></span>
-              <audio id="voiceoverPlayer" controls style="display:none;height:26px;vertical-align:middle;"></audio>
-              <button id="btnEliminaVoiceover" class="link-btn" style="display:none;">Elimina voice-over</button>
-            </div>
-
             <div class="disegno-toolbar-testo pannello-testo-fisso" id="pannelloTestoFisso" style="display:none;">
               <span class="etichetta-gruppo">📌 A quante clip si applica questo testo fisso?</span>
               <label>Applica (anche a questa) alle prossime <input type="number" id="numeroClipTestoFisso" min="1" value="3" style="width:50px;"> clip</label>
@@ -365,6 +350,26 @@
           </select></label>
           <span class="nota-testo">Invio va a capo, clicca fuori dal campo per confermare</span>
         </div>
+      </div>
+
+      <div class="play-dedicato play-dedicato-sidebar">
+        <button id="btnDisegnaFreeze" title="Blocca il fotogramma per disegnarci sopra — riparti col tasto play nativo, la barra spazio, o Salva clip">🎨 Disegna</button>
+        <label>Inizio (s) <input id="trimInizio" type="number" step="0.1"></label>
+        <label>Fine (s) <input id="trimFine" type="number" step="0.1"></label>
+        <label>Pausa (s) <input id="pausaDurata" type="number" min="0.5" step="0.5" value="3"></label>
+        <span id="pausaStato" class="pausa-stato" title="Nel video esportato il fotogramma resterà fermo lì con i disegni">Nessuna pausa</span>
+        <button id="btnRimuoviPausa" class="link-btn" style="display:none;">Rimuovi pausa</button>
+        <div id="momentiLista" class="momenti-lista" style="display:none;"></div>
+        <button id="btnNuovoMomento" class="link-btn" style="display:none;">+ Nuovo momento</button>
+        <label title="Nessun audio"><input type="checkbox" id="clipAudioMuto"> 🔇</label>
+        <label title="Volume">Vol <input type="range" id="clipAudioVolume" min="0" max="2" step="0.1" value="1" style="width:70px;"> <span id="clipAudioVolumeEtichetta">100%</span></label>
+        <label title="Velocità">🐢 <input type="range" id="clipVelocita" min="0.1" max="2" step="0.05" value="1" style="width:70px;"> <span id="clipVelocitaEtichetta">100%</span></label>
+        <button id="btnSalvaClip" class="primario">💾 Salva</button>
+        <button id="btnRimuoviClip" class="pericolo" title="Rimuovi dalla presentazione">🗑</button>
+        <button id="btnRegistraVoiceover" title="Registra un commento vocale sincronizzato con questa clip">🎙️ Voice-over</button>
+        <span id="voiceoverStato" class="pausa-stato"></span>
+        <audio id="voiceoverPlayer" controls style="display:none;height:26px;vertical-align:middle;"></audio>
+        <button id="btnEliminaVoiceover" class="link-btn" style="display:none;">Elimina voice-over</button>
       </div>
     </aside>
   </main>
