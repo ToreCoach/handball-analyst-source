@@ -80,7 +80,8 @@
     "publish": {
       "provider": "github",
       "owner": "ToreCoach",
-      "repo": "handball-analyst-releases"
+      "repo": "handball-analyst-releases",
+      "draft": false
     }
   }
 }
