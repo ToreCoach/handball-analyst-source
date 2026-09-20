@@ -81,7 +81,7 @@
       "provider": "github",
       "owner": "ToreCoach",
       "repo": "handball-analyst-releases",
-      "draft": false
+      "releaseType": "release"
     }
   }
 }
